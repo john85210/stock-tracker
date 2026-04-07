@@ -140,6 +140,21 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .range-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .range-info { font-size: 13px; color: var(--accent2); margin-left: 12px; }
 
+/* Top 5 Voted */
+.top5-section { margin-bottom: 28px; }
+.top5-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--gold); }
+.top5-title { font-size: 18px; font-weight: 700; color: var(--gold); }
+.top5-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.top5-card { flex: 1; min-width: 160px; max-width: 240px; background: linear-gradient(135deg, rgba(234,179,8,.12) 0%, rgba(234,179,8,.03) 100%); border: 1px solid rgba(234,179,8,.3); border-radius: 12px; padding: 16px; position: relative; transition: transform .2s, box-shadow .2s; }
+.top5-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(234,179,8,.15); }
+.top5-rank { position: absolute; top: -8px; left: -8px; width: 28px; height: 28px; border-radius: 50%; background: var(--gold); color: #000; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.top5-card .t5-code { font-size: 16px; font-weight: 700; color: var(--accent2); }
+.top5-card .t5-name { font-size: 15px; font-weight: 600; margin-top: 2px; }
+.top5-card .t5-return { font-size: 20px; font-weight: 700; margin-top: 8px; }
+.top5-card .t5-return.pos { color: var(--red); }
+.top5-card .t5-return.neg { color: var(--green); }
+.top5-card .t5-prices { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
 /* Loading overlay */
 .loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
 .loading-overlay .fetch-spinner { width: 32px; height: 32px; border-width: 3px; }
@@ -264,37 +279,32 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   </div>
 </div>
 
+<!-- Edit Top 5 Modal -->
+<div class="modal-overlay" id="editTop5Modal">
+  <div class="modal">
+    <h3>&#x1f3c6; 編輯當週得票前五名</h3>
+    <p style="font-size:13px; color:var(--text2); margin-bottom:12px;">從觀察股清單中選出本週得票數最高的五檔，依序填入代號。</p>
+    <div class="form-group"><label>第 1 名</label><input id="top5_1" placeholder="股票代號，例：6147"></div>
+    <div class="form-group"><label>第 2 名</label><input id="top5_2" placeholder="股票代號"></div>
+    <div class="form-group"><label>第 3 名</label><input id="top5_3" placeholder="股票代號"></div>
+    <div class="form-group"><label>第 4 名</label><input id="top5_4" placeholder="股票代號"></div>
+    <div class="form-group"><label>第 5 名</label><input id="top5_5" placeholder="股票代號"></div>
+    <div class="admin-actions">
+      <button class="btn" onclick="closeModal('editTop5Modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveTop5()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
 <script>
-// ============================================================
-//  ★★★ Firebase 設定 — 請貼上你自己的 config ★★★
-// ============================================================
-const firebaseConfig = {
-  apiKey:            "AIzaSyDsGBCtSWWPg8ND1WtgzSYnK_oNuV-5Sqw",
-  authDomain:        "stock-tracker-50a90.firebaseapp.com",
-  databaseURL:       "https://stock-tracker-50a90-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "stock-tracker-50a90",
-  storageBucket:     "stock-tracker-50a90.firebasestorage.app",
-  messagingSenderId: "547689230213",
-  appId:             "1:547689230213:web:30bf6949831ee52fe0deec"
-};
-// ============================================================
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const dataRef = db.ref('stockData');
 
 // ======================== DATA ========================
 const ADMIN_PW = 'admin123'; // Change this
 let isAdmin = false;
 let currentWeekIdx = 0;
 let selectedRange = 1;
-let firebaseReady = false;
 
 const defaultData = {
   stocks: [
@@ -324,6 +334,7 @@ const defaultData = {
       startDate: '2026-03-27',
       endDate: '2026-04-02',
       weekNum: 14,
+      topVotes: ['6147', '6451', '5475', '3595', '1717'],
       prices: {
         '7721': { mon: 61.2, fri: 77.6 },
         '5475': { mon: 213.5, fri: 246.5 },
@@ -349,69 +360,44 @@ const defaultData = {
   ]
 };
 
-let appData = JSON.parse(JSON.stringify(defaultData));
+// ======================== LOCAL STORAGE ========================
 
-// ======================== FIREBASE SYNC ========================
-function saveData() {
-  // Write to Firebase (admin only)
-  dataRef.set(appData).then(() => {
-    console.log('Data saved to Firebase');
-  }).catch(err => {
-    console.error('Firebase save failed:', err);
-    showToast('雲端儲存失敗，請確認 Firebase 設定', 'error');
-  });
+// ★ 一次性清除舊快取，確保 v2 新功能（得票前五名）生效 ★
+(function migrateOnce() {
+  const migrationKey = 'stockTracker_v2_migrated';
+  if (!localStorage.getItem(migrationKey)) {
+    localStorage.removeItem('stockTrackerData');
+    localStorage.setItem(migrationKey, '1');
+  }
+})();
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem('stockTrackerData');
+    if (saved) {
+      const data = JSON.parse(saved);
+      // Migrate: ensure every week has topVotes array
+      if (data.weeks) {
+        data.weeks.forEach(w => {
+          if (!w.topVotes) w.topVotes = [];
+        });
+      }
+      return data;
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(defaultData));
 }
 
-// Real-time listener: whenever data changes on Firebase, ALL browsers update
-dataRef.on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data && data.stocks && data.weeks) {
-    appData = data;
-    // Ensure weeks is an array (Firebase may convert to object)
-    if (!Array.isArray(appData.weeks)) {
-      appData.weeks = Object.values(appData.weeks);
-    }
-    if (!Array.isArray(appData.stocks)) {
-      appData.stocks = Object.values(appData.stocks);
-    }
-    // Fix week prices (Firebase removes null/empty)
-    appData.weeks.forEach(w => { if (!w.prices) w.prices = {}; });
-  }
+let appData = loadData();
 
-  if (!firebaseReady) {
-    firebaseReady = true;
-    document.getElementById('loadingOverlay').style.display = 'none';
-    document.getElementById('syncStatus').innerHTML = '<span class="sync-dot online"></span>已連線';
-  }
+function saveData() {
+  localStorage.setItem('stockTrackerData', JSON.stringify(appData));
   render();
-});
+}
 
-// First-time init: if Firebase is empty, push defaultData
-dataRef.once('value', (snapshot) => {
-  if (!snapshot.exists()) {
-    dataRef.set(defaultData);
-  }
-});
-
-// Detect connection state
-const connRef = firebase.database().ref('.info/connected');
-connRef.on('value', (snap) => {
-  const el = document.getElementById('syncStatus');
-  if (snap.val() === true) {
-    el.innerHTML = '<span class="sync-dot online"></span>已連線';
-  } else {
-    el.innerHTML = '<span class="sync-dot offline"></span>離線';
-  }
-});
-
-// Timeout: if Firebase doesn't connect in 5s, hide loading and show offline mode
-setTimeout(() => {
-  if (!firebaseReady) {
-    document.getElementById('loadingOverlay').style.display = 'none';
-    showToast('Firebase 連線逾時，使用離線模式', 'error');
-    render();
-  }
-}, 5000);
+// Hide loading overlay & update sync status on init
+document.getElementById('loadingOverlay').style.display = 'none';
+document.getElementById('syncStatus').innerHTML = '<span class="sync-dot online"></span>離線模式';
 
 // ======================== RANGE HELPERS ========================
 function getRangeWeeks() {
@@ -552,7 +538,48 @@ function renderStockTables() {
   const endDateLabel = endWeek ? endWeek.endDate.slice(5) : '?';
   const returnLabel = selectedRange === 1 ? '本週報酬' : `${selectedRange} 週報酬`;
 
-  let html = `<div class="group-section">
+  // ---- Top 5 Voted Section ----
+  const topVotes = endWeek.topVotes || [];
+  let html = '';
+
+  if (topVotes.length > 0) {
+    html += `<div class="top5-section">
+      <div class="top5-header">
+        <span class="top5-title">&#x1f3c6; 當週得票數前五名</span>
+        ${isAdmin ? `<button class="btn btn-sm" onclick="showEditTop5()">編輯</button>` : ''}
+      </div>
+      <div class="top5-grid">`;
+
+    topVotes.forEach((code, i) => {
+      const stock = appData.stocks.find(s => s.code === code);
+      if (!stock) return;
+      const { startPrice, endPrice } = getRangePrices(code);
+      const ret = calcReturn(startPrice, endPrice);
+
+      html += `<div class="top5-card">
+        <div class="top5-rank">${i + 1}</div>
+        <div class="t5-code">${stock.code} <span class="badge badge-${stock.market}" style="font-size:10px">${stock.market === 'tse' ? '上市' : '上櫃'}</span></div>
+        <div class="t5-name">${stock.name}</div>
+        <div class="t5-return ${ret !== null ? (ret >= 0 ? 'pos' : 'neg') : ''}">
+          ${ret !== null ? (ret >= 0 ? '+' : '') + ret.toFixed(2) + '%' : '-'}
+        </div>
+        <div class="t5-prices">${startPrice != null ? startPrice.toLocaleString() : '-'} → ${endPrice != null ? endPrice.toLocaleString() : '-'}</div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  } else if (isAdmin) {
+    html += `<div class="top5-section">
+      <div class="top5-header">
+        <span class="top5-title">&#x1f3c6; 當週得票數前五名</span>
+        <button class="btn btn-sm" onclick="showEditTop5()">設定</button>
+      </div>
+      <p style="color:var(--text2); font-size:14px; text-align:center; padding:20px;">尚未設定本週得票前五名，點右上角「設定」來新增。</p>
+    </div>`;
+  }
+
+  // ---- Main Stock Table ----
+  html += `<div class="group-section">
     <div class="group-header">
       <span class="group-title">&#x1f4ca; 本週觀察股</span>
       ${isAdmin ? `<button class="btn btn-sm admin-only" onclick="showAddStockModal('watchlist')">+ 新增股票</button>` : ''}
@@ -651,6 +678,38 @@ function doLogin() {
   } else {
     showToast('密碼錯誤', 'error');
   }
+}
+
+// ======================== TOP 5 MANAGEMENT ========================
+function showEditTop5() {
+  const week = appData.weeks[currentWeekIdx];
+  const topVotes = week.topVotes || [];
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById(`top5_${i}`).value = topVotes[i-1] || '';
+  }
+  showModal('editTop5Modal');
+}
+
+function saveTop5() {
+  const codes = [];
+  for (let i = 1; i <= 5; i++) {
+    const v = document.getElementById(`top5_${i}`).value.trim();
+    if (v) {
+      // Validate: stock must exist in our list
+      if (!appData.stocks.find(s => s.code === v)) {
+        showToast(`第 ${i} 名的代號 ${v} 不在觀察股清單中`, 'error');
+        return;
+      }
+      codes.push(v);
+    }
+  }
+  if (codes.length === 0) { showToast('請至少填入一檔股票', 'error'); return; }
+
+  const week = appData.weeks[currentWeekIdx];
+  week.topVotes = codes;
+  saveData();
+  closeModal('editTop5Modal');
+  showToast('得票前五名已更新', 'success');
 }
 
 // ======================== STOCK MANAGEMENT ========================
@@ -922,6 +981,9 @@ document.addEventListener('keydown', e => {
     document.querySelectorAll('.modal-overlay.show').forEach(el => el.classList.remove('show'));
   }
 });
+
+// Init
+render();
 </script>
 </body>
 </html>
