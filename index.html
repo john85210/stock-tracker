@@ -874,69 +874,41 @@ async function fetchViaProxy(url) {
   throw lastErr || new Error('All proxies failed');
 }
 
-async function fetchStockPrices(code, market, startDate, endDate) {
-  const startD = new Date(startDate);
-  const yyyymm = startD.getFullYear().toString() + (startD.getMonth()+1).toString().padStart(2,'0') + '01';
-
-  let url;
-  if (market === 'otc') {
-    const rocYear = startD.getFullYear() - 1911;
-    const month = (startD.getMonth()+1).toString().padStart(2,'0');
-    url = `https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43_result.php?l=zh-tw&d=${rocYear}/${month}&stkno=${code}&_=${Date.now()}`;
-  } else {
-    url = `https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${yyyymm}&stockNo=${code}`;
-  }
-
-  console.log(`[fetch] ${code} (${market}) -> ${url}`);
+// 用 Yahoo Finance API，上市/上櫃/指數統一格式
+async function fetchYahooClose(symbol, startDate, endDate) {
+  // 前後各多抓幾天當緩衝
+  const startUnix = Math.floor(new Date(startDate).getTime() / 1000) - 86400 * 3;
+  const endUnix = Math.floor(new Date(endDate).getTime() / 1000) + 86400 * 3;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${startUnix}&period2=${endUnix}&interval=1d`;
+  console.log(`[fetch] ${symbol} -> ${url}`);
   const data = await fetchViaProxy(url);
-  console.log(`[fetch] ${code} response:`, data);
+  console.log(`[fetch] ${symbol} response:`, data);
+
+  const result = data?.chart?.result?.[0];
+  if (!result) return null;
+  const timestamps = result.timestamp || [];
+  const closes = result.indicators?.quote?.[0]?.close || [];
 
   let monPrice = null, friPrice = null;
-
-  if (market === 'otc') {
-    const rows = data.aaData || [];
-    rows.forEach(row => {
-      const parts = row[0].split('/');
-      const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-      const close = parseFloat(row[6].toString().replace(/,/g, ''));
-      if (fullDate === startDate) monPrice = close;
-      if (fullDate === endDate) friPrice = close;
-    });
-  } else {
-    const rows = data.data || [];
-    rows.forEach(row => {
-      const parts = row[0].split('/');
-      const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-      const close = parseFloat(row[6].toString().replace(/,/g, ''));
-      if (fullDate === startDate) monPrice = close;
-      if (fullDate === endDate) friPrice = close;
-    });
+  for (let i = 0; i < timestamps.length; i++) {
+    if (closes[i] == null) continue;
+    // Yahoo 回傳的 timestamp 是台股收盤後的當天
+    const d = new Date(timestamps[i] * 1000);
+    const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+    if (dateStr === startDate) monPrice = Math.round(closes[i] * 100) / 100;
+    if (dateStr === endDate) friPrice = Math.round(closes[i] * 100) / 100;
   }
-
   if (monPrice === null && friPrice === null) return null;
   return { mon: monPrice, fri: friPrice };
 }
 
+async function fetchStockPrices(code, market, startDate, endDate) {
+  const symbol = market === 'otc' ? `${code}.TWO` : `${code}.TW`;
+  return await fetchYahooClose(symbol, startDate, endDate);
+}
+
 async function fetchTaiexPrices(startDate, endDate) {
-  const d = new Date(startDate);
-  const yyyymm = d.getFullYear().toString() + (d.getMonth()+1).toString().padStart(2,'0') + '01';
-  const url = `https://www.twse.com.tw/exchangeReport/FMTQIK?response=json&date=${yyyymm}`;
-  console.log(`[fetch] TAIEX -> ${url}`);
-  const data = await fetchViaProxy(url);
-  console.log(`[fetch] TAIEX response:`, data);
-
-  let monPrice = null, friPrice = null;
-  const rows = data.data || [];
-  rows.forEach(row => {
-    const parts = row[0].split('/');
-    const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-    const close = parseFloat(row[4].toString().replace(/,/g, ''));
-    if (fullDate === startDate) monPrice = close;
-    if (fullDate === endDate) friPrice = close;
-  });
-
-  if (monPrice === null && friPrice === null) return null;
-  return { mon: monPrice, fri: friPrice };
+  return await fetchYahooClose('%5ETWII', startDate, endDate);
 }
 
 // ======================== EXPORT / IMPORT ========================
