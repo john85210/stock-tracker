@@ -850,6 +850,30 @@ async function fetchAllPrices() {
   showToast(`抓取完成：成功 ${success}，失敗 ${fail}`, fail > 0 ? 'error' : 'success');
 }
 
+const CORS_PROXIES = [
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://cors-anywhere.herokuapp.com/${u}`
+];
+
+async function fetchViaProxy(url) {
+  let lastErr = null;
+  for (const makeUrl of CORS_PROXIES) {
+    try {
+      const proxied = makeUrl(url);
+      const resp = await fetch(proxied, { cache: 'no-store' });
+      if (!resp.ok) { lastErr = new Error(`HTTP ${resp.status}`); continue; }
+      const text = await resp.text();
+      if (!text || text.trim().length === 0) { lastErr = new Error('Empty response'); continue; }
+      try {
+        return JSON.parse(text);
+      } catch(e) { lastErr = new Error('Invalid JSON: ' + text.slice(0,100)); continue; }
+    } catch(e) { lastErr = e; continue; }
+  }
+  throw lastErr || new Error('All proxies failed');
+}
+
 async function fetchStockPrices(code, market, startDate, endDate) {
   const startD = new Date(startDate);
   const yyyymm = startD.getFullYear().toString() + (startD.getMonth()+1).toString().padStart(2,'0') + '01';
@@ -863,10 +887,9 @@ async function fetchStockPrices(code, market, startDate, endDate) {
     url = `https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${yyyymm}&stockNo=${code}`;
   }
 
-  const proxyUrl = 'https://api.allorigins.win/raw?url=';
-  const resp = await fetch(proxyUrl + encodeURIComponent(url));
-  if (!resp.ok) throw new Error('Fetch failed');
-  const data = await resp.json();
+  console.log(`[fetch] ${code} (${market}) -> ${url}`);
+  const data = await fetchViaProxy(url);
+  console.log(`[fetch] ${code} response:`, data);
 
   let monPrice = null, friPrice = null;
 
@@ -898,10 +921,9 @@ async function fetchTaiexPrices(startDate, endDate) {
   const d = new Date(startDate);
   const yyyymm = d.getFullYear().toString() + (d.getMonth()+1).toString().padStart(2,'0') + '01';
   const url = `https://www.twse.com.tw/exchangeReport/FMTQIK?response=json&date=${yyyymm}`;
-  const proxyUrl = 'https://api.allorigins.win/raw?url=';
-  const resp = await fetch(proxyUrl + encodeURIComponent(url));
-  if (!resp.ok) throw new Error('TAIEX fetch failed');
-  const data = await resp.json();
+  console.log(`[fetch] TAIEX -> ${url}`);
+  const data = await fetchViaProxy(url);
+  console.log(`[fetch] TAIEX response:`, data);
 
   let monPrice = null, friPrice = null;
   const rows = data.data || [];
