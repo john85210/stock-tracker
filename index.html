@@ -840,7 +840,7 @@ async function fetchAllPrices() {
       console.warn(`Fetch failed for ${s.code}`, e);
       fail++;
     }
-    await sleep(400);
+    await sleep(1200);
   }
 
   saveData(); // writes to Firebase
@@ -874,7 +874,7 @@ async function fetchStockPrices(code, market, startDate, endDate) {
     const rows = data.aaData || [];
     rows.forEach(row => {
       const parts = row[0].split('/');
-      const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1]}-${parts[2]}`;
+      const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
       const close = parseFloat(row[6].toString().replace(/,/g, ''));
       if (fullDate === startDate) monPrice = close;
       if (fullDate === endDate) friPrice = close;
@@ -883,7 +883,7 @@ async function fetchStockPrices(code, market, startDate, endDate) {
     const rows = data.data || [];
     rows.forEach(row => {
       const parts = row[0].split('/');
-      const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1]}-${parts[2]}`;
+      const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
       const close = parseFloat(row[6].toString().replace(/,/g, ''));
       if (fullDate === startDate) monPrice = close;
       if (fullDate === endDate) friPrice = close;
@@ -907,7 +907,7 @@ async function fetchTaiexPrices(startDate, endDate) {
   const rows = data.data || [];
   rows.forEach(row => {
     const parts = row[0].split('/');
-    const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1]}-${parts[2]}`;
+    const fullDate = `${parseInt(parts[0]) + 1911}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
     const close = parseFloat(row[4].toString().replace(/,/g, ''));
     if (fullDate === startDate) monPrice = close;
     if (fullDate === endDate) friPrice = close;
