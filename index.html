@@ -644,7 +644,7 @@ function renderStockTables() {
 
   if (isAdmin) {
     html += `<div style="text-align:center; padding: 20px 0;">
-      <button class="btn btn-primary" onclick="fetchAllPrices()" id="fetchBtn">&#x1f504; 自動抓取本週收盤價</button>
+      <button class="btn btn-primary" onclick="fetchAllPrices()" id="fetchBtn">&#x1f504; 自動抓取收盤價 (含前 4 週)</button>
       <div class="fetch-status" id="fetchStatus"></div>
     </div>`;
   }
@@ -882,34 +882,44 @@ async function fetchAllPrices() {
   btn.innerHTML = '<span class="fetch-spinner"></span>抓取中...';
   statusEl.textContent = '';
 
-  // 只抓取在「當前這一週」可見的股票（避免去抓更晚才新增的股票所在的過往週別）
+  // 目標週：本週 + 往前最多 4 週（共最多 5 週），讓 2/3/4 週範圍也能正確計算
+  const targetWeeks = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
+  const fromDate = targetWeeks[targetWeeks.length - 1].startDate;
+  const toDate = targetWeeks[0].endDate;
+
+  // 只抓取在「當前這一週」可見的股票
   const stocks = appData.stocks.filter(s => s.code !== 'TAIEX' && stockVisibleInWeek(s, week));
   let success = 0, fail = 0;
 
-  statusEl.textContent = '正在抓取加權指數...';
+  // 加權指數：一次抓整段日期
+  statusEl.textContent = '正在抓取加權指數 (5 週)...';
   try {
-    const taiexData = await fetchTaiexPrices(week.startDate, week.endDate);
-    if (taiexData) {
-      if (!week.prices) week.prices = {};
-      if (!week.prices['TAIEX']) week.prices['TAIEX'] = {};
-      if (taiexData.mon != null) week.prices['TAIEX'].mon = taiexData.mon;
-      if (taiexData.fri != null) week.prices['TAIEX'].fri = taiexData.fri;
-      success++;
-    }
+    const map = await fetchYahooDateMap('%5ETWII', fromDate, toDate);
+    if (map) {
+      let tFilled = 0;
+      targetWeeks.forEach(w => {
+        const wp = extractWeekPricesFromMap(map, w.startDate, w.endDate);
+        if (!wp) return;
+        if (!w.prices) w.prices = {};
+        if (!w.prices['TAIEX']) w.prices['TAIEX'] = {};
+        if (wp.mon != null) { w.prices['TAIEX'].mon = wp.mon; tFilled++; }
+        if (wp.fri != null) { w.prices['TAIEX'].fri = wp.fri; tFilled++; }
+      });
+      if (tFilled > 0) success++; else fail++;
+    } else { fail++; }
   } catch(e) { console.warn('TAIEX fetch failed', e); fail++; }
 
+  // 每檔股票：一次 API 請求把所有目標週的資料拉回來
   for (let i = 0; i < stocks.length; i++) {
     const s = stocks[i];
-    statusEl.textContent = `正在抓取 ${s.code} ${s.name} (${i+1}/${stocks.length})...`;
+    // 過濾出這檔股票「可見」的週別，避免把新股票填到它還不存在的舊週
+    const weeksForThisStock = targetWeeks.filter(w => stockVisibleInWeek(s, w));
+    if (weeksForThisStock.length === 0) { continue; }
+
+    statusEl.textContent = `正在抓取 ${s.code} ${s.name} (${i+1}/${stocks.length}, ${weeksForThisStock.length} 週)...`;
     try {
-      const priceData = await fetchStockPrices(s.code, s.market, week.startDate, week.endDate);
-      if (priceData) {
-        if (!week.prices) week.prices = {};
-        if (!week.prices[s.code]) week.prices[s.code] = {};
-        if (priceData.mon != null) week.prices[s.code].mon = priceData.mon;
-        if (priceData.fri != null) week.prices[s.code].fri = priceData.fri;
-        success++;
-      } else { fail++; }
+      const result = await backfillStockPrices(s.code, s.market, weeksForThisStock);
+      if (result && result.filled > 0) { success++; } else { fail++; }
     } catch(e) {
       console.warn(`Fetch failed for ${s.code}`, e);
       fail++;
@@ -917,11 +927,11 @@ async function fetchAllPrices() {
     await sleep(1200);
   }
 
-  saveData(); // writes to Firebase
+  saveData();
   btn.disabled = false;
-  btn.innerHTML = '&#x1f504; 自動抓取本週收盤價';
-  statusEl.textContent = `完成！成功 ${success} 檔，失敗 ${fail} 檔${fail > 0 ? '（失敗的請手動輸入）' : ''}`;
-  showToast(`抓取完成：成功 ${success}，失敗 ${fail}`, fail > 0 ? 'error' : 'success');
+  btn.innerHTML = '&#x1f504; 自動抓取收盤價 (含前 4 週)';
+  statusEl.textContent = `完成！成功 ${success} 檔，失敗 ${fail} 檔（共更新 ${targetWeeks.length} 週）${fail > 0 ? '，失敗的請手動輸入' : ''}`;
+  showToast(`抓取完成：成功 ${success}，失敗 ${fail}（${targetWeeks.length} 週）`, fail > 0 ? 'error' : 'success');
 }
 
 const CORS_PROXIES = [
