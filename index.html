@@ -910,15 +910,13 @@ async function fetchAllPrices() {
   } catch(e) { console.warn('TAIEX fetch failed', e); fail++; }
 
   // 每檔股票：一次 API 請求把所有目標週的資料拉回來
+  // 注意：不依 stockVisibleInWeek 過濾！新股票的價格資料仍要存到前幾週，
+  // 這樣在本週檢視時把報酬區間拉長才能正確計算。表格顯示的過濾是另一層處理。
   for (let i = 0; i < stocks.length; i++) {
     const s = stocks[i];
-    // 過濾出這檔股票「可見」的週別，避免把新股票填到它還不存在的舊週
-    const weeksForThisStock = targetWeeks.filter(w => stockVisibleInWeek(s, w));
-    if (weeksForThisStock.length === 0) { continue; }
-
-    statusEl.textContent = `正在抓取 ${s.code} ${s.name} (${i+1}/${stocks.length}, ${weeksForThisStock.length} 週)...`;
+    statusEl.textContent = `正在抓取 ${s.code} ${s.name} (${i+1}/${stocks.length}, ${targetWeeks.length} 週)...`;
     try {
-      const result = await backfillStockPrices(s.code, s.market, weeksForThisStock);
+      const result = await backfillStockPrices(s.code, s.market, targetWeeks);
       if (result && result.filled > 0) { success++; } else { fail++; }
     } catch(e) {
       console.warn(`Fetch failed for ${s.code}`, e);
