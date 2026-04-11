@@ -477,8 +477,21 @@ function render() {
   });
 }
 
+// 判斷一檔股票是否應該出現在某一週的清單裡
+// 規則：如果沒有 addedWeekStart（舊資料），永遠顯示；否則只有當 週.startDate >= stock.addedWeekStart 才顯示
+function stockVisibleInWeek(stock, week) {
+  if (!stock.addedWeekStart) return true; // 舊資料：沒標記的永遠顯示
+  if (!week) return true;
+  return week.startDate >= stock.addedWeekStart;
+}
+
+function getVisibleStocks(week, group) {
+  return appData.stocks.filter(s => (!group || s.group === group) && stockVisibleInWeek(s, week));
+}
+
 function renderSummary() {
-  const allStocks = appData.stocks.filter(s => s.group === 'watchlist');
+  const endWeek = appData.weeks[currentWeekIdx];
+  const allStocks = getVisibleStocks(endWeek, 'watchlist');
 
   let watchUp = 0, watchDown = 0;
   let avgReturn = 0, count = 0;
@@ -525,8 +538,8 @@ function renderStockTables() {
   const actualStartWeek = selectedRange === 1 ? endWeek : startWeek;
 
   const allStocks = [
-    ...appData.stocks.filter(s => s.group === 'watchlist'),
-    ...appData.stocks.filter(s => s.group === 'index'),
+    ...getVisibleStocks(endWeek, 'watchlist'),
+    ...getVisibleStocks(endWeek, 'index'),
   ];
 
   allStocks.sort((a, b) => {
@@ -731,26 +744,25 @@ async function addStock() {
   if (!code || !name) { showToast('請填寫代號和名稱', 'error'); return; }
   if (appData.stocks.find(s => s.code === code)) { showToast('此代號已存在', 'error'); return; }
 
-  appData.stocks.push({ code, name, group, market, reason });
+  // 紀錄這檔股票是在哪一週被新增的，避免出現在更早的週別裡
+  const currentWeek = appData.weeks[currentWeekIdx];
+  const addedWeekStart = currentWeek ? currentWeek.startDate : null;
+  appData.stocks.push({ code, name, group, market, reason, addedWeekStart });
   saveData();
   closeModal('addStockModal');
-  showToast(`已新增 ${code} ${name}，正在抓取收盤價...`, 'success');
+  showToast(`已新增 ${code} ${name}，正在抓取當週與前 4 週收盤價...`, 'success');
 
-  // 自動抓取當前所檢視那一週的收盤價（只抓這一檔，不影響其他股票）
+  // 自動抓取「目前檢視那一週 + 往前最多 4 週」的收盤價
+  // 股票會透過 addedWeekStart 標記，只顯示在當週（含之後）的表格裡，
+  // 但價格資料仍然會回填到前幾週，讓 2/3/4 週報酬區間能正確計算
   try {
-    const week = appData.weeks[currentWeekIdx];
-    if (!week) return;
-    const priceData = await fetchStockPrices(code, market, week.startDate, week.endDate);
-    if (priceData) {
-      if (!week.prices) week.prices = {};
-      if (!week.prices[code]) week.prices[code] = {};
-      if (priceData.mon != null) week.prices[code].mon = priceData.mon;
-      if (priceData.fri != null) week.prices[code].fri = priceData.fri;
+    const weeksToFill = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
+    if (weeksToFill.length === 0) return;
+
+    const { filled } = await backfillStockPrices(code, market, weeksToFill);
+    if (filled > 0) {
       saveData();
-      const parts = [];
-      if (priceData.mon != null) parts.push(`${week.startDate.slice(5)}=${priceData.mon}`);
-      if (priceData.fri != null) parts.push(`${week.endDate.slice(5)}=${priceData.fri}`);
-      showToast(`${code} 收盤價已抓取：${parts.join(', ')}`, 'success');
+      showToast(`${code} 已回填 ${weeksToFill.length} 週 / ${filled} 筆收盤價`, 'success');
     } else {
       showToast(`${code} 抓取失敗，請手動輸入`, 'error');
     }
@@ -860,7 +872,8 @@ async function fetchAllPrices() {
   btn.innerHTML = '<span class="fetch-spinner"></span>抓取中...';
   statusEl.textContent = '';
 
-  const stocks = appData.stocks.filter(s => s.code !== 'TAIEX');
+  // 只抓取在「當前這一週」可見的股票（避免去抓更晚才新增的股票所在的過往週別）
+  const stocks = appData.stocks.filter(s => s.code !== 'TAIEX' && stockVisibleInWeek(s, week));
   let success = 0, fail = 0;
 
   statusEl.textContent = '正在抓取加權指數...';
@@ -925,32 +938,94 @@ async function fetchViaProxy(url) {
   throw lastErr || new Error('All proxies failed');
 }
 
-// 用 Yahoo Finance API，上市/上櫃/指數統一格式
-async function fetchYahooClose(symbol, startDate, endDate) {
-  // 前後各多抓幾天當緩衝
-  const startUnix = Math.floor(new Date(startDate).getTime() / 1000) - 86400 * 3;
-  const endUnix = Math.floor(new Date(endDate).getTime() / 1000) + 86400 * 3;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${startUnix}&period2=${endUnix}&interval=1d`;
-  console.log(`[fetch] ${symbol} -> ${url}`);
-  const data = await fetchViaProxy(url);
-  console.log(`[fetch] ${symbol} response:`, data);
+// 從日期 map 中挑出一週的「首個交易日」與「末個交易日」收盤
+// 這樣可以自動處理國定假日（週一放假→用週二、週五放假→用週四）
+function extractWeekPricesFromMap(map, startDate, endDate) {
+  if (!map) return null;
+  const sd = new Date(startDate);
+  const ed = new Date(endDate);
+  const dates = [];
+  for (let d = new Date(sd); d <= ed; d.setDate(d.getDate()+1)) {
+    const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+    dates.push(key);
+  }
+  const trading = dates.filter(k => map[k] != null);
+  if (trading.length === 0) return null;
+  return {
+    mon: map[trading[0]],        // 該週首個交易日收盤（自動略過放假）
+    fri: map[trading[trading.length - 1]], // 該週末個交易日收盤
+    monDate: trading[0],
+    friDate: trading[trading.length - 1]
+  };
+}
 
+// 抓一個較長的日期區間，回傳 { 'YYYY-MM-DD': close, ... }
+async function fetchYahooDateMap(symbol, fromDate, toDate) {
+  const startUnix = Math.floor(new Date(fromDate).getTime() / 1000) - 86400 * 3;
+  const endUnix = Math.floor(new Date(toDate).getTime() / 1000) + 86400 * 3;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${startUnix}&period2=${endUnix}&interval=1d`;
+  console.log(`[fetch-range] ${symbol} ${fromDate}~${toDate} -> ${url}`);
+  const data = await fetchViaProxy(url);
   const result = data?.chart?.result?.[0];
   if (!result) return null;
   const timestamps = result.timestamp || [];
   const closes = result.indicators?.quote?.[0]?.close || [];
-
-  let monPrice = null, friPrice = null;
+  const map = {};
   for (let i = 0; i < timestamps.length; i++) {
     if (closes[i] == null) continue;
-    // Yahoo 回傳的 timestamp 是台股收盤後的當天
     const d = new Date(timestamps[i] * 1000);
-    const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-    if (dateStr === startDate) monPrice = Math.round(closes[i] * 100) / 100;
-    if (dateStr === endDate) friPrice = Math.round(closes[i] * 100) / 100;
+    const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+    map[key] = Math.round(closes[i] * 100) / 100;
   }
-  if (monPrice === null && friPrice === null) return null;
-  return { mon: monPrice, fri: friPrice };
+  return map;
+}
+
+// 一次抓多週的收盤價並回填到 appData.weeks（只針對單一股票代號）
+// 會自動處理上市/上櫃 fallback 與國定假日
+async function backfillStockPrices(code, market, weeks) {
+  if (!weeks || weeks.length === 0) return { filled: 0 };
+  // 找出最早與最晚的日期
+  const fromDate = weeks.reduce((m, w) => w.startDate < m ? w.startDate : m, weeks[0].startDate);
+  const toDate = weeks.reduce((m, w) => w.endDate > m ? w.endDate : m, weeks[0].endDate);
+
+  const primary = market === 'otc' ? `${code}.TWO` : `${code}.TW`;
+  const fallback = market === 'otc' ? `${code}.TW` : `${code}.TWO`;
+  let map = null;
+  try { map = await fetchYahooDateMap(primary, fromDate, toDate); } catch(e) {}
+  if (!map || Object.keys(map).length === 0) {
+    try {
+      map = await fetchYahooDateMap(fallback, fromDate, toDate);
+      if (map && Object.keys(map).length > 0) {
+        const stock = appData.stocks.find(s => s.code === code);
+        if (stock) {
+          stock.market = market === 'otc' ? 'tse' : 'otc';
+          console.log(`[auto-fix] ${code} 市場類型已修正為 ${stock.market}`);
+          showToast(`已自動修正 ${code} 的市場類型`, 'success');
+        }
+      }
+    } catch(e) {}
+  }
+  if (!map) return { filled: 0 };
+
+  let filled = 0;
+  weeks.forEach(w => {
+    const wp = extractWeekPricesFromMap(map, w.startDate, w.endDate);
+    if (!wp) return;
+    if (!w.prices) w.prices = {};
+    if (!w.prices[code]) w.prices[code] = {};
+    if (wp.mon != null) { w.prices[code].mon = wp.mon; filled++; }
+    if (wp.fri != null) { w.prices[code].fri = wp.fri; filled++; }
+  });
+  return { filled };
+}
+
+// 用 Yahoo Finance API，上市/上櫃/指數統一格式
+// 自動處理國定假日：首個交易日當週一、末個交易日當週五
+async function fetchYahooClose(symbol, startDate, endDate) {
+  const map = await fetchYahooDateMap(symbol, startDate, endDate);
+  if (!map) return null;
+  const wp = extractWeekPricesFromMap(map, startDate, endDate);
+  return wp;
 }
 
 async function fetchStockPrices(code, market, startDate, endDate) {
