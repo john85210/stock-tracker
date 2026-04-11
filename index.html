@@ -704,13 +704,12 @@ function saveTop5() {
       codes.push(v);
     }
   }
-  if (codes.length === 0) { showToast('請至少填入一檔股票', 'error'); return; }
-
+  // 允許全空（清空本週得票名單）
   const week = appData.weeks[currentWeekIdx];
   week.topVotes = codes;
   saveData();
   closeModal('editTop5Modal');
-  showToast('得票前五名已更新', 'success');
+  showToast(codes.length === 0 ? '已清空本週得票前五名' : '得票前五名已更新', 'success');
 }
 
 // ======================== STOCK MANAGEMENT ========================
@@ -722,7 +721,7 @@ function showAddStockModal(group) {
   showModal('addStockModal');
 }
 
-function addStock() {
+async function addStock() {
   const code = document.getElementById('stockCode').value.trim();
   const name = document.getElementById('stockName').value.trim();
   const group = document.getElementById('stockGroup').value;
@@ -735,7 +734,30 @@ function addStock() {
   appData.stocks.push({ code, name, group, market, reason });
   saveData();
   closeModal('addStockModal');
-  showToast(`已新增 ${code} ${name}`, 'success');
+  showToast(`已新增 ${code} ${name}，正在抓取收盤價...`, 'success');
+
+  // 自動抓取當前所檢視那一週的收盤價（只抓這一檔，不影響其他股票）
+  try {
+    const week = appData.weeks[currentWeekIdx];
+    if (!week) return;
+    const priceData = await fetchStockPrices(code, market, week.startDate, week.endDate);
+    if (priceData) {
+      if (!week.prices) week.prices = {};
+      if (!week.prices[code]) week.prices[code] = {};
+      if (priceData.mon != null) week.prices[code].mon = priceData.mon;
+      if (priceData.fri != null) week.prices[code].fri = priceData.fri;
+      saveData();
+      const parts = [];
+      if (priceData.mon != null) parts.push(`${week.startDate.slice(5)}=${priceData.mon}`);
+      if (priceData.fri != null) parts.push(`${week.endDate.slice(5)}=${priceData.fri}`);
+      showToast(`${code} 收盤價已抓取：${parts.join(', ')}`, 'success');
+    } else {
+      showToast(`${code} 抓取失敗，請手動輸入`, 'error');
+    }
+  } catch(e) {
+    console.warn('addStock auto-fetch failed', e);
+    showToast(`${code} 抓取失敗，請手動輸入`, 'error');
+  }
 }
 
 function removeStock(code) {
