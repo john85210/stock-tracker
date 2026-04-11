@@ -480,8 +480,11 @@ function render() {
 // 判斷一檔股票是否應該出現在某一週的清單裡
 // 規則：如果沒有 addedWeekStart（舊資料），永遠顯示；否則只有當 週.startDate >= stock.addedWeekStart 才顯示
 function stockVisibleInWeek(stock, week) {
-  if (!stock.addedWeekStart) return true; // 舊資料：沒標記的永遠顯示
   if (!week) return true;
+  // 若該週把這檔股票標記為隱藏，則不顯示
+  if (week.hiddenStocks && week.hiddenStocks.includes(stock.code)) return false;
+  // 舊資料沒有 addedWeekStart 的永遠顯示
+  if (!stock.addedWeekStart) return true;
   return week.startDate >= stock.addedWeekStart;
 }
 
@@ -772,12 +775,19 @@ async function addStock() {
   }
 }
 
+// 只把股票從「目前檢視那一週」隱藏，不影響其他週
 function removeStock(code) {
-  if (!confirm(`確定要刪除 ${code}？`)) return;
-  appData.stocks = appData.stocks.filter(s => s.code !== code);
-  appData.weeks.forEach(w => { if (w.prices && w.prices[code]) delete w.prices[code]; });
+  const week = appData.weeks[currentWeekIdx];
+  if (!week) return;
+  const stock = appData.stocks.find(s => s.code === code);
+  if (!stock) return;
+  if (!confirm(`確定要從第 ${week.weekNum} 週移除 ${code} ${stock.name}？\n（只會影響本週，其他週別不受影響）`)) return;
+  if (!week.hiddenStocks) week.hiddenStocks = [];
+  if (!week.hiddenStocks.includes(code)) week.hiddenStocks.push(code);
+  // 同時把這週這檔股票的價格資料清掉，避免後面範圍計算到
+  if (week.prices && week.prices[code]) delete week.prices[code];
   saveData();
-  showToast('已刪除', 'success');
+  showToast(`已從第 ${week.weekNum} 週移除 ${code}`, 'success');
 }
 
 // ======================== PRICE EDITING ========================
@@ -1060,14 +1070,173 @@ async function fetchTaiexPrices(startDate, endDate) {
 }
 
 // ======================== EXPORT / IMPORT ========================
-function exportData() {
+// 動態載入 xlsx-js-style（支援儲存格樣式的 SheetJS 分支）
+async function ensureXLSXLoaded() {
+  if (typeof XLSX !== 'undefined') return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function exportData() {
+  try {
+    await ensureXLSXLoaded();
+  } catch(e) {
+    showToast('載入 Excel 函式庫失敗，改用 JSON 匯出', 'error');
+    exportJSON();
+    return;
+  }
+
+  const week = appData.weeks[currentWeekIdx];
+  if (!week) { showToast('沒有資料可以匯出', 'error'); return; }
+
+  // 取得本週可見的觀察股（排除加權指數，稍後會依報酬率插入）
+  const stocks = getVisibleStocks(week, 'watchlist');
+  const withReturns = stocks.map(s => {
+    const p = (week.prices || {})[s.code] || {};
+    const ret = calcReturn(p.mon, p.fri);
+    return { stock: s, mon: p.mon, fri: p.fri, ret };
+  });
+  // 依報酬率遞減排序；null 放最後
+  withReturns.sort((a, b) => {
+    const ra = a.ret == null ? -Infinity : a.ret;
+    const rb = b.ret == null ? -Infinity : b.ret;
+    return rb - ra;
+  });
+
+  const taiexP = (week.prices || {}).TAIEX || {};
+  const taiexReturn = calcReturn(taiexP.mon, taiexP.fri);
+
+  const monLabel = week.startDate.slice(5).replace('-', '/') + '收盤';
+  const friLabel = week.endDate.slice(5).replace('-', '/') + '收盤';
+  const header = ['股票代號', '標的', '選擇原因', monLabel, friLabel, '本週報酬率'];
+
+  const rows = [header];
+  const taiexRowData = ['', '加權指數', '', taiexP.mon ?? '', taiexP.fri ?? '',
+                       taiexReturn != null ? taiexReturn / 100 : ''];
+  let taiexInserted = false;
+  let taiexRowIdx = -1;
+
+  withReturns.forEach(item => {
+    if (!taiexInserted && taiexReturn != null &&
+        (item.ret == null || taiexReturn > item.ret)) {
+      rows.push(taiexRowData);
+      taiexRowIdx = rows.length - 1;
+      taiexInserted = true;
+    }
+    rows.push([
+      item.stock.code,
+      item.stock.name,
+      item.stock.reason || '',
+      item.mon ?? '',
+      item.fri ?? '',
+      item.ret != null ? item.ret / 100 : ''
+    ]);
+  });
+  if (!taiexInserted && taiexReturn != null) {
+    rows.push(taiexRowData);
+    taiexRowIdx = rows.length - 1;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // 欄寬
+  ws['!cols'] = [
+    { wch: 10 }, { wch: 12 }, { wch: 60 },
+    { wch: 12 }, { wch: 12 }, { wch: 14 }
+  ];
+
+  // 列高：標題列高一點
+  ws['!rows'] = [{ hpt: 24 }];
+
+  const range = XLSX.utils.decode_range(ws['!ref']);
+
+  // 樣式：header row
+  for (let c = 0; c <= range.e.c; c++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c });
+    if (!ws[addr]) continue;
+    ws[addr].s = {
+      font: { bold: true, color: { rgb: "333333" }, sz: 11 },
+      fill: { patternType: "solid", fgColor: { rgb: "F2F2F2" } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top:    { style: "thin", color: { rgb: "CCCCCC" } },
+        bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+        left:   { style: "thin", color: { rgb: "CCCCCC" } },
+        right:  { style: "thin", color: { rgb: "CCCCCC" } }
+      }
+    };
+  }
+
+  // 資料列樣式
+  for (let r = 1; r <= range.e.r; r++) {
+    const isTaiex = (r === taiexRowIdx);
+    for (let c = 0; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+
+      const style = {
+        font: { sz: 11 },
+        alignment: { vertical: "center", wrapText: c === 2 },
+        border: {
+          top:    { style: "thin", color: { rgb: "EEEEEE" } },
+          bottom: { style: "thin", color: { rgb: "EEEEEE" } },
+          left:   { style: "thin", color: { rgb: "EEEEEE" } },
+          right:  { style: "thin", color: { rgb: "EEEEEE" } }
+        }
+      };
+
+      // 代號、收盤、報酬率置中
+      if (c === 0 || c === 3 || c === 4 || c === 5) {
+        style.alignment.horizontal = "center";
+      }
+
+      // 報酬率欄格式化為百分比，並上色（紅漲綠跌）
+      if (c === 5) {
+        ws[addr].z = '0.00%;[Red]-0.00%';
+        const val = ws[addr].v;
+        if (typeof val === 'number') {
+          if (val > 0) style.font = { ...style.font, bold: true, color: { rgb: "CC0000" } };
+          else if (val < 0) style.font = { ...style.font, bold: true, color: { rgb: "008800" } };
+        }
+      }
+
+      // 加權指數整列用淺藍底
+      if (isTaiex) {
+        style.fill = { patternType: "solid", fgColor: { rgb: "DCE8F4" } };
+        style.font = { ...style.font, bold: true };
+        if (c === 5 && typeof ws[addr].v === 'number') {
+          const v = ws[addr].v;
+          style.font.color = { rgb: v >= 0 ? "CC0000" : "008800" };
+        }
+      }
+
+      ws[addr].s = style;
+    }
+  }
+
+  const wb = XLSX.utils.book_new();
+  const sheetName = `第${week.weekNum}週`;
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  const filename = `stock-tracker-week${week.weekNum}-${week.startDate}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showToast('已匯出 Excel 檔', 'success');
+}
+
+// 保留 JSON 匯出作為備援（資料備份用）
+function exportJSON() {
   const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `stock-tracker-${fmtDate(new Date())}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast('資料已匯出', 'success');
+  showToast('資料已匯出（JSON）', 'success');
 }
 
 function importData(e) {
