@@ -190,6 +190,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   <div class="week-label" id="weekLabel">載入中...</div>
   <button onclick="nextWeek()">&#x276F;</button>
   <button class="btn btn-sm admin-only" style="display:none" onclick="showAddWeekModal()">+ 新增週</button>
+  <button class="btn btn-sm admin-only" style="display:none; background:#5a1f1f; color:#ffb4b4;" onclick="deleteCurrentWeek()">&#x1f5d1; 刪除本週</button>
 </div>
 
 <div class="range-bar">
@@ -800,6 +801,34 @@ function addWeek() {
   showToast('已新增新週報', 'success');
 }
 
+function deleteCurrentWeek() {
+  if (!isAdmin) { showToast('需要管理員權限', 'error'); return; }
+  if (appData.weeks.length === 0) { showToast('沒有可刪除的週', 'error'); return; }
+  if (appData.weeks.length === 1) {
+    showToast('至少要保留一週，無法刪除', 'error');
+    return;
+  }
+  const week = appData.weeks[currentWeekIdx];
+  if (!week) return;
+
+  const msg = `確定要刪除「第 ${week.weekNum} 週 (${week.startDate} ~ ${week.endDate})」嗎？\n\n此動作無法復原，該週所有收盤價與得票名單都會被移除。`;
+  if (!confirm(msg)) return;
+  // 第二層確認，避免誤刪
+  const confirm2 = prompt(`再次確認：請輸入「刪除」兩個字來確認刪除第 ${week.weekNum} 週`);
+  if (confirm2 !== '刪除') {
+    showToast('已取消刪除', 'success');
+    return;
+  }
+
+  appData.weeks.splice(currentWeekIdx, 1);
+  // 調整目前索引避免越界
+  if (currentWeekIdx >= appData.weeks.length) {
+    currentWeekIdx = appData.weeks.length - 1;
+  }
+  saveData();
+  showToast(`已刪除第 ${week.weekNum} 週`, 'success');
+}
+
 // ======================== API FETCHING ========================
 async function fetchAllPrices() {
   const week = appData.weeks[currentWeekIdx];
@@ -903,8 +932,30 @@ async function fetchYahooClose(symbol, startDate, endDate) {
 }
 
 async function fetchStockPrices(code, market, startDate, endDate) {
-  const symbol = market === 'otc' ? `${code}.TWO` : `${code}.TW`;
-  return await fetchYahooClose(symbol, startDate, endDate);
+  const primary = market === 'otc' ? `${code}.TWO` : `${code}.TW`;
+  const fallback = market === 'otc' ? `${code}.TW` : `${code}.TWO`;
+  try {
+    const r = await fetchYahooClose(primary, startDate, endDate);
+    if (r && (r.mon != null || r.fri != null)) return r;
+  } catch(e) { console.warn(`[fallback] ${primary} failed, trying ${fallback}`, e); }
+
+  // 主要市場失敗，試另一個市場
+  try {
+    const r2 = await fetchYahooClose(fallback, startDate, endDate);
+    if (r2 && (r2.mon != null || r2.fri != null)) {
+      // 自動修正使用者設錯的市場類型
+      const correctedMarket = market === 'otc' ? 'tse' : 'otc';
+      const stock = appData.stocks.find(s => s.code === code);
+      if (stock) {
+        stock.market = correctedMarket;
+        console.log(`[auto-fix] ${code} 市場類型已修正為 ${correctedMarket}`);
+        showToast(`已自動修正 ${code} 的市場類型`, 'success');
+      }
+      return r2;
+    }
+  } catch(e) { console.warn(`[fallback] ${fallback} also failed`, e); }
+
+  return null;
 }
 
 async function fetchTaiexPrices(startDate, endDate) {
