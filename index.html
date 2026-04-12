@@ -179,8 +179,10 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     <span id="syncStatus" style="font-size:12px; color:var(--text2);"><span class="sync-dot offline"></span>離線</span>
     <span id="adminIndicator" style="display:none; color: var(--gold); font-size: 13px;">&#x1f511; 管理員模式</span>
     <button class="btn" id="btnAdminToggle" onclick="toggleAdmin()">管理員登入</button>
-    <button class="btn" onclick="exportData()">匯出資料</button>
-    <button class="btn" onclick="document.getElementById('importInput').click()">匯入資料</button>
+    <button class="btn" onclick="exportData()">匯出 Excel</button>
+    <button class="btn admin-only" style="display:none" onclick="downloadDataJSON()">&#x1f4e4; 下載 data.json</button>
+    <button class="btn admin-only" style="display:none" onclick="showUploadHelp()">&#x2753; 如何上傳</button>
+    <button class="btn" onclick="document.getElementById('importInput').click()">匯入 JSON</button>
     <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
   </div>
 </div>
@@ -245,6 +247,30 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     <div class="admin-actions">
       <button class="btn" onclick="closeModal('addStockModal')">取消</button>
       <button class="btn btn-primary" onclick="addStock()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Help Modal -->
+<div class="modal-overlay" id="uploadHelpModal">
+  <div class="modal" style="max-width:560px">
+    <h3>&#x1f4e4; 如何把變更同步到 GitHub</h3>
+    <p style="color: var(--text2); font-size: 14px; line-height: 1.7;">
+      你剛剛下載了 <code>data.json</code>。把它上傳回 GitHub 後，任何人用任何瀏覽器（包含無痕視窗、手機、別台電腦）打開網頁都會看到最新資料。
+    </p>
+    <ol style="color: var(--text); font-size: 14px; line-height: 1.9; padding-left: 20px;">
+      <li>到 <a href="https://github.com/john85210/stock-tracker" target="_blank" style="color:var(--gold)">你的 stock-tracker repo</a></li>
+      <li>如果是第一次：點右上角 <b>Add file → Upload files</b>，把剛下載的 <code>data.json</code> 拖進去</li>
+      <li>如果已經存在：點進 <code>data.json</code> → 右上鉛筆圖示 → 全選刪掉 → 貼上新檔內容</li>
+      <li>滾到最下面按 <b>Commit changes</b></li>
+      <li>等 1~2 分鐘讓 GitHub Pages 刷新</li>
+      <li>重新整理網頁即可看到同步後的狀態</li>
+    </ol>
+    <p style="color: var(--text2); font-size: 12px; margin-top: 10px;">
+      💡 最快的方式：直接把 <code>data.json</code> 拖到 GitHub repo 的網頁上，它會自動進入 commit 流程。
+    </p>
+    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top: 16px;">
+      <button class="btn btn-primary" onclick="closeModal('uploadHelpModal')">我知道了</button>
     </div>
   </div>
 </div>
@@ -372,6 +398,10 @@ const defaultData = {
   }
 })();
 
+// ======================== GITHUB SYNC CONFIG ========================
+// 把 data.json commit 到這個 repo 的 main 分支根目錄，任何人開啟網頁會自動讀取
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/john85210/stock-tracker/main/data.json';
+
 function loadData() {
   try {
     const saved = localStorage.getItem('stockTrackerData');
@@ -392,13 +422,67 @@ function loadData() {
 let appData = loadData();
 
 function saveData() {
+  appData.lastModified = Date.now();
   localStorage.setItem('stockTrackerData', JSON.stringify(appData));
   render();
+  updateSyncStatus('pending');
 }
 
-// Hide loading overlay & update sync status on init
+function updateSyncStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (state === 'synced') {
+    el.innerHTML = '<span class="sync-dot online"></span>已從 GitHub 同步';
+    el.style.color = '#5fd46f';
+  } else if (state === 'pending') {
+    el.innerHTML = '<span class="sync-dot" style="background:#f39c12"></span>本地有未上傳變更';
+    el.style.color = '#f39c12';
+  } else if (state === 'syncing') {
+    el.innerHTML = '<span class="sync-dot" style="background:#3498db"></span>正在從 GitHub 讀取...';
+    el.style.color = '#3498db';
+  } else {
+    el.innerHTML = '<span class="sync-dot offline"></span>離線模式 (GitHub 未連線)';
+    el.style.color = 'var(--text2)';
+  }
+}
+
+async function syncFromGitHub() {
+  updateSyncStatus('syncing');
+  try {
+    const resp = await fetch(GITHUB_RAW_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const remoteData = await resp.json();
+    if (!remoteData.stocks || !remoteData.weeks) throw new Error('格式不正確');
+
+    const remoteTs = remoteData.lastModified || 0;
+    const localTs = appData.lastModified || 0;
+
+    if (remoteTs >= localTs) {
+      // 雲端版本比較新（或一樣新）→ 覆蓋本地
+      remoteData.weeks.forEach(w => { if (!w.topVotes) w.topVotes = []; });
+      appData = remoteData;
+      localStorage.setItem('stockTrackerData', JSON.stringify(appData));
+      currentWeekIdx = 0;
+      render();
+      updateSyncStatus('synced');
+      console.log('[sync] 已從 GitHub 讀取資料，版本時間：', new Date(remoteTs).toLocaleString());
+    } else {
+      // 本地比較新 → 提醒使用者上傳
+      updateSyncStatus('pending');
+      console.log('[sync] 本地版本比 GitHub 新，請記得按「下載 data.json」並上傳到 GitHub');
+    }
+  } catch(e) {
+    console.warn('[sync] GitHub 讀取失敗', e);
+    updateSyncStatus('offline');
+  }
+}
+
+// Hide loading overlay on init
 document.getElementById('loadingOverlay').style.display = 'none';
-document.getElementById('syncStatus').innerHTML = '<span class="sync-dot online"></span>離線模式';
+updateSyncStatus('offline');
+
+// 啟動後非同步從 GitHub 讀資料（不擋 UI）
+setTimeout(() => { syncFromGitHub(); }, 100);
 
 // ======================== RANGE HELPERS ========================
 function getRangeWeeks() {
@@ -1245,6 +1329,25 @@ async function exportData() {
   const filename = `stock-tracker-week${week.weekNum}-${week.startDate}.xlsx`;
   XLSX.writeFile(wb, filename);
   showToast('已匯出 Excel 檔', 'success');
+}
+
+// 下載 data.json 給使用者上傳回 GitHub
+function downloadDataJSON() {
+  // 確保檔案有時間戳，之後 syncFromGitHub 才判斷得出誰比較新
+  appData.lastModified = Date.now();
+  localStorage.setItem('stockTrackerData', JSON.stringify(appData));
+  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'data.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  // 下載後直接打開上傳說明
+  showUploadHelp();
+}
+
+function showUploadHelp() {
+  showModal('uploadHelpModal');
 }
 
 // 保留 JSON 匯出作為備援（資料備份用）
