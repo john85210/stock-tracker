@@ -270,7 +270,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   <div class="modal">
     <h3 id="editPriceTitle">編輯收盤價</h3>
     <div class="form-row">
-      <div class="form-group"><label id="editMonLabel">週一收盤價</label><input type="number" step="0.01" id="editMonPrice"></div>
+      <div class="form-group"><label id="editMonLabel">週一開盤價</label><input type="number" step="0.01" id="editMonPrice"></div>
       <div class="form-group"><label id="editFriLabel">週五收盤價</label><input type="number" step="0.01" id="editFriPrice"></div>
     </div>
     <div class="admin-actions">
@@ -605,7 +605,7 @@ function renderStockTables() {
       <thead><tr>
         <th style="width:40px">#</th>
         <th>代號</th><th>標的</th><th>選擇原因</th>
-        <th style="text-align:right">${startDateLabel} 收盤</th>
+        <th style="text-align:right">${startDateLabel} 開盤</th>
         <th style="text-align:right">${endDateLabel} 收盤</th>
         <th style="text-align:right">${returnLabel}</th>
         ${isAdmin ? '<th>操作</th>' : ''}
@@ -796,8 +796,8 @@ function showEditPrice(code, name) {
   editingCode = code;
   const week = appData.weeks[currentWeekIdx];
   const p = (week.prices || {})[code] || {};
-  document.getElementById('editPriceTitle').textContent = `${code} ${name} 收盤價`;
-  document.getElementById('editMonLabel').textContent = `${week.startDate.slice(5)} 收盤價`;
+  document.getElementById('editPriceTitle').textContent = `${code} ${name} 價格`;
+  document.getElementById('editMonLabel').textContent = `${week.startDate.slice(5)} 開盤價`;
   document.getElementById('editFriLabel').textContent = `${week.endDate.slice(5)} 收盤價`;
   document.getElementById('editMonPrice').value = p.mon || '';
   document.getElementById('editFriPrice').value = p.fri || '';
@@ -956,8 +956,9 @@ async function fetchViaProxy(url) {
   throw lastErr || new Error('All proxies failed');
 }
 
-// 從日期 map 中挑出一週的「首個交易日」與「末個交易日」收盤
-// 這樣可以自動處理國定假日（週一放假→用週二、週五放假→用週四）
+// 從日期 map 中挑出一週的「首個交易日開盤」與「末個交易日收盤」
+// 自動處理國定假日（週一放假→用週二開盤、週五放假→用週四收盤）
+// 開盤→收盤才能完整反映整週漲幅
 function extractWeekPricesFromMap(map, startDate, endDate) {
   if (!map) return null;
   const sd = new Date(startDate);
@@ -969,15 +970,20 @@ function extractWeekPricesFromMap(map, startDate, endDate) {
   }
   const trading = dates.filter(k => map[k] != null);
   if (trading.length === 0) return null;
+  const first = map[trading[0]];
+  const last = map[trading[trading.length - 1]];
+  // 首日優先取開盤；若 open 缺失則退回 close
+  const firstPrice = (first && first.open != null) ? first.open : (first ? first.close : null);
+  const lastPrice = (last && last.close != null) ? last.close : (last ? last.open : null);
   return {
-    mon: map[trading[0]],        // 該週首個交易日收盤（自動略過放假）
-    fri: map[trading[trading.length - 1]], // 該週末個交易日收盤
+    mon: firstPrice,      // 該週首個交易日「開盤價」
+    fri: lastPrice,       // 該週末個交易日「收盤價」
     monDate: trading[0],
     friDate: trading[trading.length - 1]
   };
 }
 
-// 抓一個較長的日期區間，回傳 { 'YYYY-MM-DD': close, ... }
+// 抓一個較長的日期區間，回傳 { 'YYYY-MM-DD': {open, close}, ... }
 async function fetchYahooDateMap(symbol, fromDate, toDate) {
   const startUnix = Math.floor(new Date(fromDate).getTime() / 1000) - 86400 * 3;
   const endUnix = Math.floor(new Date(toDate).getTime() / 1000) + 86400 * 3;
@@ -987,13 +993,18 @@ async function fetchYahooDateMap(symbol, fromDate, toDate) {
   const result = data?.chart?.result?.[0];
   if (!result) return null;
   const timestamps = result.timestamp || [];
-  const closes = result.indicators?.quote?.[0]?.close || [];
+  const quote = result.indicators?.quote?.[0] || {};
+  const opens = quote.open || [];
+  const closes = quote.close || [];
   const map = {};
   for (let i = 0; i < timestamps.length; i++) {
-    if (closes[i] == null) continue;
+    if (opens[i] == null && closes[i] == null) continue;
     const d = new Date(timestamps[i] * 1000);
     const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-    map[key] = Math.round(closes[i] * 100) / 100;
+    map[key] = {
+      open: opens[i] != null ? Math.round(opens[i] * 100) / 100 : null,
+      close: closes[i] != null ? Math.round(closes[i] * 100) / 100 : null
+    };
   }
   return map;
 }
@@ -1119,7 +1130,7 @@ async function exportData() {
   const taiexP = (week.prices || {}).TAIEX || {};
   const taiexReturn = calcReturn(taiexP.mon, taiexP.fri);
 
-  const monLabel = week.startDate.slice(5).replace('-', '/') + '收盤';
+  const monLabel = week.startDate.slice(5).replace('-', '/') + '開盤';
   const friLabel = week.endDate.slice(5).replace('-', '/') + '收盤';
   const header = ['股票代號', '標的', '選擇原因', monLabel, friLabel, '本週報酬率'];
 
