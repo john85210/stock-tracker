@@ -1370,11 +1370,26 @@ function renderExcelPreview() {
   const newCount = excelImportData.filter(i => i.status === 'new').length;
   const existCount = excelImportData.filter(i => i.status === 'exists').length;
 
+  // 計算將被剔除的股票
+  const importedNames = new Set(excelImportData.map(i => i.name));
+  const importedCodes = new Set(excelImportData.filter(i => i.code).map(i => i.code));
+  const currentWeek = appData.weeks[currentWeekIdx];
+  const visibleWatchlist = currentWeek ? getVisibleStocks(currentWeek, 'watchlist') : [];
+  const toRemove = visibleWatchlist.filter(s => !importedCodes.has(s.code) && !importedNames.has(s.name));
+
   let html = `<p style="font-size:13px; color:var(--text); margin-bottom:8px;">
     共 ${excelImportData.length} 檔：
     <span style="color:var(--green)">${newCount} 檔新股票</span>，
-    <span style="color:var(--gold)">${existCount} 檔已存在（將更新推薦人）</span>
+    <span style="color:var(--gold)">${existCount} 檔已存在（更新推薦人）</span>
+    ${toRemove.length > 0 ? `，<span style="color:var(--red)">${toRemove.length} 檔將被剔除</span>` : ''}
   </p>`;
+
+  if (toRemove.length > 0) {
+    html += `<div style="background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); border-radius:8px; padding:10px 14px; margin-bottom:10px; font-size:12px;">
+      <strong style="color:var(--red)">以下股票不在 Excel 中，確認匯入後將從本週剔除：</strong><br>
+      ${toRemove.map(s => `<span style="color:var(--text2); margin-right:10px;">${s.code} ${s.name}</span>`).join('')}
+    </div>`;
+  }
 
   html += `<div style="overflow-x:auto"><table class="excel-preview-table">
     <thead><tr>
@@ -1452,11 +1467,35 @@ async function confirmExcelImport() {
     }
   }
 
+  // ---- 自動剔除：上週有但 Excel 沒有的股票，從本週隱藏 ----
+  // 蒐集本次 Excel 匯入的所有代號（含已存在 + 新增的）
+  const importedCodes = new Set();
+  for (let i = 0; i < excelImportData.length; i++) {
+    const chk = document.getElementById(`excelChk${i}`);
+    if (!chk || !chk.checked) continue;
+    const code = document.getElementById(`excelCode${i}`).value.trim();
+    if (code) importedCodes.add(code);
+  }
+  // 找出本週原本可見的觀察股（不含加權指數）
+  const visibleWatchlist = getVisibleStocks(currentWeek, 'watchlist');
+  let removed = 0;
+  if (!currentWeek.hiddenStocks) currentWeek.hiddenStocks = [];
+  for (const s of visibleWatchlist) {
+    if (!importedCodes.has(s.code)) {
+      // 這檔不在 Excel 裡 → 從本週隱藏
+      if (!currentWeek.hiddenStocks.includes(s.code)) {
+        currentWeek.hiddenStocks.push(s.code);
+        removed++;
+        console.log(`[excel] 自動剔除 ${s.code} ${s.name}（不在 Excel 中）`);
+      }
+    }
+  }
+
   saveData();
   closeModal('excelImportModal');
   render();
 
-  if (added === 0 && updated === 0) {
+  if (added === 0 && updated === 0 && removed === 0) {
     showToast('沒有任何變更', 'error');
     return;
   }
@@ -1464,6 +1503,7 @@ async function confirmExcelImport() {
   const msgs = [];
   if (added > 0) msgs.push(`新增 ${added} 檔`);
   if (updated > 0) msgs.push(`更新 ${updated} 檔推薦人`);
+  if (removed > 0) msgs.push(`剔除 ${removed} 檔`);
   if (skipped > 0) msgs.push(`跳過 ${skipped} 檔`);
   showToast(`${msgs.join('，')}${added > 0 ? '，正在抓取收盤價...' : ''}`, 'success');
 
