@@ -684,21 +684,30 @@ function saveData() {
   updateSyncStatus('pending');
 }
 
+let pendingTimer = null;
 function updateSyncStatus(state) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
+  if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
   if (state === 'synced') {
-    el.innerHTML = '<span class="sync-dot online"></span>已從 GitHub 同步';
+    el.innerHTML = '<span class="sync-dot online"></span>已同步';
     el.style.color = '#5fd46f';
+    el.style.display = '';
   } else if (state === 'pending') {
-    el.innerHTML = '<span class="sync-dot" style="background:#f39c12"></span>本地有未上傳變更';
+    el.innerHTML = '<span class="sync-dot" style="background:#f39c12"></span>未上傳 <span onclick="updateSyncStatus(\'hide\')" style="cursor:pointer;margin-left:4px;opacity:.6;font-size:10px">✕</span>';
     el.style.color = '#f39c12';
+    el.style.display = '';
+    // 5 秒後自動淡出
+    pendingTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
   } else if (state === 'syncing') {
-    el.innerHTML = '<span class="sync-dot" style="background:#3498db"></span>正在從 GitHub 讀取...';
+    el.innerHTML = '<span class="sync-dot" style="background:#3498db"></span>同步中...';
     el.style.color = '#3498db';
+    el.style.display = '';
+  } else if (state === 'hide') {
+    el.style.display = 'none';
   } else {
-    el.innerHTML = '<span class="sync-dot offline"></span>離線模式 (GitHub 未連線)';
-    el.style.color = 'var(--text2)';
+    // offline - 不顯示，避免干擾
+    el.style.display = 'none';
   }
 }
 
@@ -735,10 +744,12 @@ async function syncFromGitHub() {
 
 // Hide loading overlay on init
 document.getElementById('loadingOverlay').style.display = 'none';
-updateSyncStatus('offline');
+updateSyncStatus('hide');
 
 // 啟動後非同步從 GitHub 讀資料（不擋 UI）
 setTimeout(() => { syncFromGitHub(); }, 100);
+// 背景預載股票代號對照表
+setTimeout(() => { loadStockLookupTable(); }, 2000);
 
 // ======================== RANGE HELPERS ========================
 function getRangeWeeks() {
@@ -1199,41 +1210,38 @@ async function handleExcelUpload(event) {
 
     excelImportData = parsed;
 
-    // 立刻顯示預覽框，不等代號查詢
+    // 載入股票對照表（如果還沒載入的話）
+    if (!stockLookupMap) {
+      showToast('正在載入股票代號對照表...', 'success');
+      await loadStockLookupTable();
+    }
+
+    // 用對照表查新股票的代號
+    const newItems = parsed.filter(item => item.status === 'new');
+    let lookupCount = 0;
+    if (stockLookupMap && Object.keys(stockLookupMap).length > 0) {
+      for (const item of newItems) {
+        const result = searchStockByName(item.name);
+        if (result) {
+          item.code = result.code;
+          item.market = result.market;
+          item.lookupStatus = 'ok';
+          lookupCount++;
+          console.log(`[excel] ✓ ${item.name} → ${result.code} (${result.market})`);
+        } else {
+          item.lookupStatus = 'fail';
+          console.log(`[excel] ✗ ${item.name} → 未找到`);
+        }
+      }
+    }
+
+    // 顯示預覽框
     renderExcelPreview();
     document.getElementById('excelImportModal').classList.add('show');
 
-    // 背景查詢新股票的代號
-    const newItems = parsed.filter(item => item.status === 'new');
     if (newItems.length > 0) {
-      showToast(`找到 ${parsed.length} 檔股票（${newItems.length} 檔新股票），背景查詢代號中...`, 'success');
-      let lookupCount = 0;
-      for (const item of newItems) {
-        try {
-          const result = await searchStockCode(item.name);
-          if (result) {
-            item.code = result.code;
-            item.market = result.market;
-            item.lookupStatus = 'ok';
-            lookupCount++;
-            // 即時更新預覽表格中的對應欄位
-            const idx = excelImportData.indexOf(item);
-            const codeInput = document.getElementById(`excelCode${idx}`);
-            const marketSelect = document.getElementById(`excelMarket${idx}`);
-            if (codeInput) codeInput.value = result.code;
-            if (marketSelect) marketSelect.value = result.market;
-          } else {
-            item.lookupStatus = 'fail';
-          }
-        } catch(e) {
-          item.lookupStatus = 'fail';
-          console.warn(`[excel] lookup failed for ${item.name}`, e);
-        }
-        // 每次查完一檔就更新預覽
-        renderExcelPreview();
-        await new Promise(r => setTimeout(r, 300));
-      }
-      showToast(`代號查詢完成（成功 ${lookupCount} / ${newItems.length} 檔）`, lookupCount > 0 ? 'success' : 'error');
+      const tableSize = stockLookupMap ? Object.keys(stockLookupMap).length : 0;
+      showToast(`找到 ${parsed.length} 檔（新 ${newItems.length} 檔，代號比對成功 ${lookupCount} 檔 / 對照表 ${tableSize} 檔）`, lookupCount === newItems.length ? 'success' : 'error');
     } else {
       showToast(`找到 ${parsed.length} 檔股票（全部已存在，可更新推薦人）`, 'success');
     }
@@ -1244,37 +1252,117 @@ async function handleExcelUpload(event) {
   }
 }
 
-// Search stock code by name using Yahoo Finance search API
-async function searchStockCode(stockName) {
+// ======================== 股票名稱→代號 對照表 ========================
+// 從證交所 / 櫃買中心 OpenAPI 載入完整清單並快取 7 天
+let stockLookupMap = null;
+
+async function loadStockLookupTable() {
+  // 檢查快取
   try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(stockName)}&lang=zh-TW&region=TW&quotesCount=5&newsCount=0`;
-    const data = await fetchViaProxy(url, 8000); // 8 秒超時，避免卡太久
-    if (data && data.quotes && data.quotes.length > 0) {
-      // Find a Taiwan stock match (.TW or .TWO)
-      for (const q of data.quotes) {
-        const sym = q.symbol || '';
-        if (sym.endsWith('.TW')) {
-          return { code: sym.replace('.TW', ''), market: 'tse' };
-        }
-        if (sym.endsWith('.TWO')) {
-          return { code: sym.replace('.TWO', ''), market: 'otc' };
-        }
-      }
-      // Fallback: first result that looks like a number (Taiwan stock code)
-      for (const q of data.quotes) {
-        const sym = q.symbol || '';
-        const numPart = sym.replace(/\.(TW|TWO)$/, '');
-        if (/^\d{4,6}$/.test(numPart)) {
-          const isTW = sym.includes('.TW');
-          return { code: numPart, market: isTW ? 'tse' : 'otc' };
-        }
+    const cached = localStorage.getItem('twStockLookup');
+    if (cached) {
+      const data = JSON.parse(cached);
+      if (data.ts && Date.now() - data.ts < 7 * 86400000 && Object.keys(data.map).length > 100) {
+        console.log(`[lookup] 使用快取，共 ${Object.keys(data.map).length} 檔`);
+        stockLookupMap = data.map;
+        return data.map;
       }
     }
-    return null;
-  } catch(e) {
-    console.warn('[searchStockCode]', e);
-    return null;
+  } catch(e) {}
+
+  const map = {};
+  console.log('[lookup] 開始從證交所/櫃買中心載入股票清單...');
+
+  // ---- 上市 (TSE) ----
+  const tseUrls = [
+    'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
+    'https://openapi.twse.com.tw/v1/opendata/t187ap03_L'
+  ];
+  for (const tseUrl of tseUrls) {
+    try {
+      let tseData;
+      try {
+        const resp = await fetch(tseUrl, { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        tseData = await resp.json();
+      } catch(e) {
+        console.log('[lookup] TSE 直連失敗，嘗試 proxy...', e.message);
+        tseData = await fetchViaProxy(tseUrl, 10000);
+      }
+      if (Array.isArray(tseData) && tseData.length > 0) {
+        tseData.forEach(item => {
+          const code = (item.Code || item['證券代號'] || item['公司代號'] || '').toString().trim();
+          const name = (item.Name || item['證券名稱'] || item['公司簡稱'] || '').toString().trim();
+          if (code && name && /^\d{4,6}$/.test(code)) {
+            map[name] = { code, market: 'tse' };
+          }
+        });
+        console.log(`[lookup] TSE 載入成功 (${tseUrl.split('/').pop()})，共 ${Object.keys(map).length} 檔`);
+        break; // 成功就不試下一個 URL
+      }
+    } catch(e) { console.warn('[lookup] TSE 載入失敗', tseUrl, e.message); }
   }
+
+  // ---- 上櫃 (OTC) ----
+  const otcUrls = [
+    'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',
+    'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O'
+  ];
+  const tseCount = Object.keys(map).length;
+  for (const otcUrl of otcUrls) {
+    try {
+      let otcData;
+      try {
+        const resp = await fetch(otcUrl, { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        otcData = await resp.json();
+      } catch(e) {
+        console.log('[lookup] OTC 直連失敗，嘗試 proxy...', e.message);
+        otcData = await fetchViaProxy(otcUrl, 10000);
+      }
+      if (Array.isArray(otcData) && otcData.length > 0) {
+        otcData.forEach(item => {
+          const code = (item.SecuritiesCompanyCode || item.Code || item['證券代號'] || item['公司代號'] || '').toString().trim();
+          const name = (item.CompanyName || item.Name || item['公司簡稱'] || item['證券名稱'] || '').toString().trim();
+          if (code && name && /^\d{4,6}$/.test(code) && !map[name]) {
+            map[name] = { code, market: 'otc' };
+          }
+        });
+        const otcCount = Object.keys(map).length - tseCount;
+        console.log(`[lookup] OTC 載入成功，共 ${otcCount} 檔`);
+        break;
+      }
+    } catch(e) { console.warn('[lookup] OTC 載入失敗', otcUrl, e.message); }
+  }
+
+  const total = Object.keys(map).length;
+  if (total > 0) {
+    localStorage.setItem('twStockLookup', JSON.stringify({ ts: Date.now(), map }));
+    console.log(`[lookup] 股票對照表已快取，共 ${total} 檔`);
+  } else {
+    console.warn('[lookup] 無法載入任何股票資料');
+  }
+  stockLookupMap = map;
+  return map;
+}
+
+// 用名稱查代號（支援模糊比對：去除 -KY、* 等後綴）
+function searchStockByName(name) {
+  if (!stockLookupMap) return null;
+  // 精確比對
+  if (stockLookupMap[name]) return stockLookupMap[name];
+  // 去除 -KY 後綴再找
+  const clean = name.replace(/[-*]KY$/i, '').replace(/\*$/, '').trim();
+  if (stockLookupMap[clean]) return stockLookupMap[clean];
+  // 反向：對照表裡有 -KY 但 Excel 沒寫
+  for (const [k, v] of Object.entries(stockLookupMap)) {
+    if (k.replace(/[-*]KY$/i, '').replace(/\*$/, '').trim() === clean) return v;
+  }
+  // 部分匹配（名稱包含）
+  for (const [k, v] of Object.entries(stockLookupMap)) {
+    if (k.includes(name) || name.includes(k)) return v;
+  }
+  return null;
 }
 
 function renderExcelPreview() {
