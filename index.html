@@ -66,6 +66,7 @@ tbody tr { transition: background .15s; }
 tbody tr:hover { background: rgba(59,130,246,.08); }
 .code { font-weight: 700; color: var(--accent2); font-size: 15px; }
 .name { font-weight: 600; }
+.recommender { font-size: 13px; color: var(--accent2); white-space: nowrap; }
 .reason { max-width: 400px; font-size: 13px; color: var(--text2); line-height: 1.5; }
 .price { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .return-cell { font-weight: 700; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -328,6 +329,15 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     max-height: 85vh;
   }
 
+  /* Excel preview table on mobile */
+  .excel-preview-table { font-size: 11px; }
+  .excel-preview-table th, .excel-preview-table td { padding: 6px 4px; }
+  .excel-preview-table input { width: 60px; font-size: 12px; }
+  .excel-preview-table .reason-cell { max-width: 80px; }
+
+  /* Recommender column on mobile */
+  .recommender { font-size: 12px; }
+
   /* Toast */
   .toast {
     left: 14px;
@@ -374,6 +384,17 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .top5-card .t5-return.neg { color: var(--green); }
 .top5-card .t5-prices { font-size: 11px; color: var(--text2); margin-top: 4px; }
 
+/* Excel Import Preview */
+.excel-preview-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+.excel-preview-table th { background: var(--bg3); padding: 8px 10px; text-align: left; font-size: 12px; color: var(--text2); }
+.excel-preview-table td { padding: 8px 10px; border-top: 1px solid rgba(71,85,105,.3); vertical-align: middle; }
+.excel-preview-table input { width: 80px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; }
+.excel-preview-table select { padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px; }
+.excel-preview-table .status-ok { color: var(--green); font-size: 12px; }
+.excel-preview-table .status-warn { color: var(--gold); font-size: 12px; }
+.excel-preview-table .status-fail { color: var(--red); font-size: 12px; }
+.excel-preview-table .reason-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text2); }
+
 /* Loading overlay */
 .loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
 .loading-overlay .fetch-spinner { width: 32px; height: 32px; border-width: 3px; }
@@ -401,6 +422,8 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     <button class="btn" onclick="exportData()">匯出 Excel</button>
     <button class="btn admin-only" style="display:none" onclick="downloadDataJSON()">&#x1f4e4; 下載 data.json</button>
     <button class="btn admin-only" style="display:none" onclick="showUploadHelp()">&#x2753; 如何上傳</button>
+    <button class="btn admin-only" style="display:none" onclick="document.getElementById('excelImportInput').click()">&#x1f4c4; 匯入 Excel 持股</button>
+    <input type="file" id="excelImportInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
     <button class="btn" onclick="document.getElementById('importInput').click()">匯入 JSON</button>
     <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
   </div>
@@ -462,6 +485,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
         <option value="otc">上櫃 (OTC)</option>
       </select>
     </div>
+    <div class="form-group"><label>推薦人</label><input id="stockRecommender" placeholder="例：Jack Lu"></div>
     <div class="form-group"><label>選擇原因</label><textarea id="stockReason" placeholder="為什麼選擇這檔股票？"></textarea></div>
     <div class="admin-actions">
       <button class="btn" onclick="closeModal('addStockModal')">取消</button>
@@ -490,6 +514,19 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     </p>
     <div style="display:flex; gap:8px; justify-content:flex-end; margin-top: 16px;">
       <button class="btn btn-primary" onclick="closeModal('uploadHelpModal')">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- Excel Import Preview Modal -->
+<div class="modal-overlay" id="excelImportModal">
+  <div class="modal" style="max-width:700px; max-height:90vh; overflow-y:auto;">
+    <h3>&#x1f4c4; 匯入 Excel 持股</h3>
+    <p style="color:var(--text2); font-size:13px; margin-bottom:12px;">系統已自動查詢股票代號，請確認無誤後按「確認匯入」。若代號有誤可直接修改。</p>
+    <div id="excelPreviewContent" style="margin-bottom:16px;"></div>
+    <div class="admin-actions">
+      <button class="btn" onclick="closeModal('excelImportModal')">取消</button>
+      <button class="btn btn-primary" onclick="confirmExcelImport()">確認匯入</button>
     </div>
   </div>
 </div>
@@ -907,7 +944,7 @@ function renderStockTables() {
     <div class="table-wrap"><table>
       <thead><tr>
         <th style="width:40px">#</th>
-        <th>代號</th><th>標的</th><th>選擇原因</th>
+        <th>代號</th><th>標的</th><th>推薦人</th><th>選擇原因</th>
         <th style="text-align:right">${startDateLabel} 開盤</th>
         <th style="text-align:right">${endDateLabel} 收盤</th>
         <th style="text-align:right">${returnLabel}</th>
@@ -930,6 +967,7 @@ function renderStockTables() {
         }
       </td>
       <td data-label="標的" class="name">${isIdx ? '<span style="color:var(--gold); font-weight:700">'+s.name+'</span>' : s.name}</td>
+      <td data-label="推薦人" class="recommender">${s.recommender || '-'}</td>
       <td data-label="選擇原因" class="reason">${s.reason}</td>
       <td data-label="${startDateLabel} 開盤" class="price">${startPrice != null ? startPrice.toLocaleString() : '-'}</td>
       <td data-label="${endDateLabel} 收盤" class="price">${endPrice != null ? endPrice.toLocaleString() : '-'}</td>
@@ -1046,6 +1084,7 @@ async function addStock() {
   const group = document.getElementById('stockGroup').value;
   const market = document.getElementById('stockMarket').value;
   const reason = document.getElementById('stockReason').value.trim();
+  const recommender = document.getElementById('stockRecommender').value.trim();
 
   if (!code || !name) { showToast('請填寫代號和名稱', 'error'); return; }
   if (appData.stocks.find(s => s.code === code)) { showToast('此代號已存在', 'error'); return; }
@@ -1053,7 +1092,7 @@ async function addStock() {
   // 紀錄這檔股票是在哪一週被新增的，避免出現在更早的週別裡
   const currentWeek = appData.weeks[currentWeekIdx];
   const addedWeekStart = currentWeek ? currentWeek.startDate : null;
-  appData.stocks.push({ code, name, group, market, reason, addedWeekStart });
+  appData.stocks.push({ code, name, group, market, reason, recommender, addedWeekStart });
   saveData();
   closeModal('addStockModal');
   showToast(`已新增 ${code} ${name}，正在抓取當週與前 4 週收盤價...`, 'success');
@@ -1076,6 +1115,246 @@ async function addStock() {
     console.warn('addStock auto-fetch failed', e);
     showToast(`${code} 抓取失敗，請手動輸入`, 'error');
   }
+}
+
+// ======================== EXCEL IMPORT ========================
+let excelImportData = []; // Temporary storage for parsed Excel rows
+
+async function handleExcelUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // Reset so same file can be uploaded again
+
+  await ensureXLSXLoaded();
+  showToast('正在解析 Excel ...', 'success');
+
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+    // Find header row - look for a row containing '個股' or 'Column 5'
+    let headerIdx = -1;
+    let colRecommender = -1, colName = -1, colReason = -1;
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+      const row = rows[i];
+      if (!row) continue;
+      const cells = row.map(c => String(c || '').trim());
+      // Try to detect columns
+      const nameIdx = cells.findIndex(c => c === '個股' || c.includes('股票') || c.includes('標的'));
+      const reasonIdx = cells.findIndex(c => c === '故事' || c.includes('原因') || c.includes('理由'));
+      if (nameIdx >= 0) {
+        headerIdx = i;
+        colName = nameIdx;
+        colReason = reasonIdx >= 0 ? reasonIdx : -1;
+        // Recommender is typically the column before stock name, or look for 'Column 5' or person-like header
+        const recIdx = cells.findIndex(c => c.includes('Column') || c.includes('推薦') || c.includes('成員') || c.includes('姓名'));
+        colRecommender = recIdx >= 0 ? recIdx : (nameIdx > 0 ? 0 : -1);
+        break;
+      }
+    }
+
+    if (headerIdx === -1 || colName === -1) {
+      // Fallback: assume row 0 or 1 is header, A=recommender, B=name, C=reason
+      headerIdx = rows.length > 1 && rows[0] && rows[0].length >= 2 ? 0 : -1;
+      if (headerIdx === -1) { showToast('無法辨識 Excel 格式', 'error'); return; }
+      colRecommender = 0;
+      colName = 1;
+      colReason = 2;
+    }
+
+    // Parse data rows
+    const parsed = [];
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+      const stockName = String(row[colName] || '').trim();
+      if (!stockName) continue;
+      const recommender = colRecommender >= 0 ? String(row[colRecommender] || '').trim() : '';
+      const reason = colReason >= 0 ? String(row[colReason] || '').trim() : '';
+      // Skip if stock already exists
+      const existing = appData.stocks.find(s => s.name === stockName);
+      parsed.push({
+        name: stockName,
+        recommender: recommender,
+        reason: reason,
+        code: existing ? existing.code : '',
+        market: existing ? existing.market : 'tse',
+        status: existing ? 'exists' : 'new',
+        skip: !!existing
+      });
+    }
+
+    if (parsed.length === 0) {
+      showToast('Excel 中沒有找到股票資料', 'error');
+      return;
+    }
+
+    excelImportData = parsed;
+
+    // Auto-lookup codes for new stocks
+    showToast(`找到 ${parsed.length} 檔股票，正在自動查詢代號...`, 'success');
+    let lookupCount = 0;
+    for (const item of parsed) {
+      if (item.status === 'exists') continue;
+      try {
+        const result = await searchStockCode(item.name);
+        if (result) {
+          item.code = result.code;
+          item.market = result.market;
+          item.lookupStatus = 'ok';
+          lookupCount++;
+        } else {
+          item.lookupStatus = 'fail';
+        }
+      } catch(e) {
+        item.lookupStatus = 'fail';
+        console.warn(`[excel] lookup failed for ${item.name}`, e);
+      }
+      // Rate limit
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    renderExcelPreview();
+    document.getElementById('excelImportModal').classList.add('show');
+    showToast(`代號查詢完成（成功 ${lookupCount} 檔）`, 'success');
+
+  } catch(e) {
+    console.error('[excel import]', e);
+    showToast('Excel 解析失敗: ' + e.message, 'error');
+  }
+}
+
+// Search stock code by name using Yahoo Finance search API
+async function searchStockCode(stockName) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(stockName)}&lang=zh-TW&region=TW&quotesCount=5&newsCount=0`;
+    const data = await fetchViaProxy(url);
+    if (data && data.quotes && data.quotes.length > 0) {
+      // Find a Taiwan stock match (.TW or .TWO)
+      for (const q of data.quotes) {
+        const sym = q.symbol || '';
+        if (sym.endsWith('.TW')) {
+          return { code: sym.replace('.TW', ''), market: 'tse' };
+        }
+        if (sym.endsWith('.TWO')) {
+          return { code: sym.replace('.TWO', ''), market: 'otc' };
+        }
+      }
+      // Fallback: first result that looks like a number (Taiwan stock code)
+      for (const q of data.quotes) {
+        const sym = q.symbol || '';
+        const numPart = sym.replace(/\.(TW|TWO)$/, '');
+        if (/^\d{4,6}$/.test(numPart)) {
+          const isTW = sym.includes('.TW');
+          return { code: numPart, market: isTW ? 'tse' : 'otc' };
+        }
+      }
+    }
+    return null;
+  } catch(e) {
+    console.warn('[searchStockCode]', e);
+    return null;
+  }
+}
+
+function renderExcelPreview() {
+  const container = document.getElementById('excelPreviewContent');
+  let html = `<div style="overflow-x:auto"><table class="excel-preview-table">
+    <thead><tr>
+      <th>匯入</th><th>推薦人</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
+    </tr></thead><tbody>`;
+
+  excelImportData.forEach((item, idx) => {
+    const statusHtml = item.status === 'exists'
+      ? `<span class="status-warn">已存在</span>`
+      : item.lookupStatus === 'ok'
+        ? `<span class="status-ok">✓ 已查到</span>`
+        : `<span class="status-fail">✗ 請手動填</span>`;
+
+    html += `<tr>
+      <td><input type="checkbox" id="excelChk${idx}" ${item.skip ? '' : 'checked'} ${item.status === 'exists' ? 'disabled' : ''}></td>
+      <td>${item.recommender || '-'}</td>
+      <td style="font-weight:600">${item.name}</td>
+      <td><input id="excelCode${idx}" value="${item.code}" placeholder="代號" ${item.status === 'exists' ? 'disabled' : ''}></td>
+      <td><select id="excelMarket${idx}" ${item.status === 'exists' ? 'disabled' : ''}>
+        <option value="tse" ${item.market === 'tse' ? 'selected' : ''}>上市</option>
+        <option value="otc" ${item.market === 'otc' ? 'selected' : ''}>上櫃</option>
+      </select></td>
+      <td>${statusHtml}</td>
+      <td class="reason-cell" title="${item.reason}">${item.reason || '-'}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+async function confirmExcelImport() {
+  const currentWeek = appData.weeks[currentWeekIdx];
+  if (!currentWeek) { showToast('請先選擇要匯入的週別', 'error'); return; }
+
+  let imported = 0, skipped = 0;
+  const newStockCodes = [];
+
+  for (let i = 0; i < excelImportData.length; i++) {
+    const item = excelImportData[i];
+    const chk = document.getElementById(`excelChk${i}`);
+    if (!chk || !chk.checked) { skipped++; continue; }
+
+    const code = document.getElementById(`excelCode${i}`).value.trim();
+    const market = document.getElementById(`excelMarket${i}`).value;
+
+    if (!code) {
+      showToast(`${item.name} 沒有代號，已跳過`, 'error');
+      skipped++;
+      continue;
+    }
+
+    // Skip if already exists
+    if (appData.stocks.find(s => s.code === code)) {
+      skipped++;
+      continue;
+    }
+
+    const addedWeekStart = currentWeek.startDate;
+    appData.stocks.push({
+      code, name: item.name, group: 'watchlist', market,
+      reason: item.reason, recommender: item.recommender,
+      addedWeekStart
+    });
+    newStockCodes.push({ code, market });
+    imported++;
+  }
+
+  saveData();
+  closeModal('excelImportModal');
+  render();
+
+  if (imported === 0) {
+    showToast('沒有新增任何股票', 'error');
+    return;
+  }
+
+  showToast(`成功匯入 ${imported} 檔股票${skipped > 0 ? `（跳過 ${skipped} 檔）` : ''}，正在抓取收盤價...`, 'success');
+
+  // Auto-fetch prices for newly imported stocks
+  let fetchSuccess = 0;
+  for (const { code, market } of newStockCodes) {
+    try {
+      const weeksToFill = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
+      const { filled } = await backfillStockPrices(code, market, weeksToFill);
+      if (filled > 0) fetchSuccess++;
+    } catch(e) {
+      console.warn(`[excel import] fetch failed for ${code}`, e);
+    }
+    await new Promise(r => setTimeout(r, 500)); // Rate limit
+  }
+
+  saveData();
+  render();
+  showToast(`匯入完成！${imported} 檔股票，${fetchSuccess} 檔成功抓取收盤價`, 'success');
 }
 
 // 只把股票從「目前檢視那一週」隱藏，不影響其他週
@@ -1435,10 +1714,10 @@ async function exportData() {
 
   const monLabel = week.startDate.slice(5).replace('-', '/') + '開盤';
   const friLabel = week.endDate.slice(5).replace('-', '/') + '收盤';
-  const header = ['股票代號', '標的', '選擇原因', monLabel, friLabel, '本週報酬率'];
+  const header = ['股票代號', '標的', '推薦人', '選擇原因', monLabel, friLabel, '本週報酬率'];
 
   const rows = [header];
-  const taiexRowData = ['', '加權指數', '', taiexP.mon ?? '', taiexP.fri ?? '',
+  const taiexRowData = ['', '加權指數', '', '', taiexP.mon ?? '', taiexP.fri ?? '',
                        taiexReturn != null ? taiexReturn / 100 : ''];
   let taiexInserted = false;
   let taiexRowIdx = -1;
@@ -1453,6 +1732,7 @@ async function exportData() {
     rows.push([
       item.stock.code,
       item.stock.name,
+      item.stock.recommender || '',
       item.stock.reason || '',
       item.mon ?? '',
       item.fri ?? '',
@@ -1468,7 +1748,7 @@ async function exportData() {
 
   // 欄寬
   ws['!cols'] = [
-    { wch: 10 }, { wch: 12 }, { wch: 60 },
+    { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 60 },
     { wch: 12 }, { wch: 12 }, { wch: 14 }
   ];
 
@@ -1503,7 +1783,7 @@ async function exportData() {
 
       const style = {
         font: { sz: 11 },
-        alignment: { vertical: "center", wrapText: c === 2 },
+        alignment: { vertical: "center", wrapText: c === 3 },
         border: {
           top:    { style: "thin", color: { rgb: "EEEEEE" } },
           bottom: { style: "thin", color: { rgb: "EEEEEE" } },
@@ -1512,13 +1792,13 @@ async function exportData() {
         }
       };
 
-      // 代號、收盤、報酬率置中
-      if (c === 0 || c === 3 || c === 4 || c === 5) {
+      // 代號、推薦人、收盤、報酬率置中
+      if (c === 0 || c === 2 || c === 4 || c === 5 || c === 6) {
         style.alignment.horizontal = "center";
       }
 
       // 報酬率欄格式化為百分比，並上色（紅漲綠跌）
-      if (c === 5) {
+      if (c === 6) {
         ws[addr].z = '0.00%;[Red]-0.00%';
         const val = ws[addr].v;
         if (typeof val === 'number') {
@@ -1531,7 +1811,7 @@ async function exportData() {
       if (isTaiex) {
         style.fill = { patternType: "solid", fgColor: { rgb: "DCE8F4" } };
         style.font = { ...style.font, bold: true };
-        if (c === 5 && typeof ws[addr].v === 'number') {
+        if (c === 6 && typeof ws[addr].v === 'number') {
           const v = ws[addr].v;
           style.font.color = { rgb: v >= 0 ? "CC0000" : "008800" };
         }
