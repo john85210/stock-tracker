@@ -1125,7 +1125,12 @@ async function handleExcelUpload(event) {
   if (!file) return;
   event.target.value = ''; // Reset so same file can be uploaded again
 
-  await ensureXLSXLoaded();
+  try {
+    await ensureXLSXLoaded();
+  } catch(e) {
+    showToast('Excel 函式庫載入失敗，請檢查網路連線', 'error');
+    return;
+  }
   showToast('正在解析 Excel ...', 'success');
 
   try {
@@ -1194,10 +1199,14 @@ async function handleExcelUpload(event) {
 
     excelImportData = parsed;
 
-    // Auto-lookup codes for new stocks only
+    // 立刻顯示預覽框，不等代號查詢
+    renderExcelPreview();
+    document.getElementById('excelImportModal').classList.add('show');
+
+    // 背景查詢新股票的代號
     const newItems = parsed.filter(item => item.status === 'new');
     if (newItems.length > 0) {
-      showToast(`找到 ${parsed.length} 檔股票（${newItems.length} 檔新股票），正在自動查詢代號...`, 'success');
+      showToast(`找到 ${parsed.length} 檔股票（${newItems.length} 檔新股票），背景查詢代號中...`, 'success');
       let lookupCount = 0;
       for (const item of newItems) {
         try {
@@ -1207,6 +1216,12 @@ async function handleExcelUpload(event) {
             item.market = result.market;
             item.lookupStatus = 'ok';
             lookupCount++;
+            // 即時更新預覽表格中的對應欄位
+            const idx = excelImportData.indexOf(item);
+            const codeInput = document.getElementById(`excelCode${idx}`);
+            const marketSelect = document.getElementById(`excelMarket${idx}`);
+            if (codeInput) codeInput.value = result.code;
+            if (marketSelect) marketSelect.value = result.market;
           } else {
             item.lookupStatus = 'fail';
           }
@@ -1214,15 +1229,14 @@ async function handleExcelUpload(event) {
           item.lookupStatus = 'fail';
           console.warn(`[excel] lookup failed for ${item.name}`, e);
         }
+        // 每次查完一檔就更新預覽
+        renderExcelPreview();
         await new Promise(r => setTimeout(r, 300));
       }
-      showToast(`代號查詢完成（成功 ${lookupCount} 檔）`, 'success');
+      showToast(`代號查詢完成（成功 ${lookupCount} / ${newItems.length} 檔）`, lookupCount > 0 ? 'success' : 'error');
     } else {
       showToast(`找到 ${parsed.length} 檔股票（全部已存在，可更新推薦人）`, 'success');
     }
-
-    renderExcelPreview();
-    document.getElementById('excelImportModal').classList.add('show');
 
   } catch(e) {
     console.error('[excel import]', e);
@@ -1234,7 +1248,7 @@ async function handleExcelUpload(event) {
 async function searchStockCode(stockName) {
   try {
     const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(stockName)}&lang=zh-TW&region=TW&quotesCount=5&newsCount=0`;
-    const data = await fetchViaProxy(url);
+    const data = await fetchViaProxy(url, 8000); // 8 秒超時，避免卡太久
     if (data && data.quotes && data.quotes.length > 0) {
       // Find a Taiwan stock match (.TW or .TWO)
       for (const q of data.quotes) {
@@ -1548,12 +1562,16 @@ const CORS_PROXIES = [
   u => `https://cors-anywhere.herokuapp.com/${u}`
 ];
 
-async function fetchViaProxy(url) {
+async function fetchViaProxy(url, timeoutMs) {
+  const timeout = timeoutMs || 15000; // 預設 15 秒超時
   let lastErr = null;
   for (const makeUrl of CORS_PROXIES) {
     try {
       const proxied = makeUrl(url);
-      const resp = await fetch(proxied, { cache: 'no-store' });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      const resp = await fetch(proxied, { cache: 'no-store', signal: controller.signal });
+      clearTimeout(timer);
       if (!resp.ok) { lastErr = new Error(`HTTP ${resp.status}`); continue; }
       const text = await resp.text();
       if (!text || text.trim().length === 0) { lastErr = new Error('Empty response'); continue; }
