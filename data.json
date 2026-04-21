@@ -5,14 +5,16 @@
       "name": "微程式",
       "group": "watchlist",
       "market": "tse",
-      "reason": "原為 U-bike 通訊模組供應商，現以「震動檢測系統」成功打入台積電供應鏈"
+      "reason": "原為 U-bike 通訊模組供應商，現以「震動檢測系統」成功打入台積電供應鏈",
+      "recommender": "Jack鄭"
     },
     {
       "code": "5475",
       "name": "德宏",
       "group": "watchlist",
       "market": "otc",
-      "reason": "投信可能進場買單"
+      "reason": "投信可能進場買單",
+      "recommender": "Archy"
     },
     {
       "code": "3595",
@@ -26,70 +28,80 @@
       "name": "頎邦",
       "group": "watchlist",
       "market": "otc",
-      "reason": "對驅動IC客戶漲價，且有接到Marvell的訂單跨入矽光封裝，TIA for MRVL；PD for Macon。四月開始路演，積極跟投資法人溝通。"
+      "reason": "對驅動IC客戶漲價，且有接到Marvell的訂單跨入矽光封裝，TIA for MRVL；PD for Macon。四月開始路演，積極跟投資法人溝通。",
+      "recommender": "Jack鄭"
     },
     {
       "code": "3093",
       "name": "港建",
       "group": "watchlist",
       "market": "otc",
-      "reason": "代理 ADST 的設備，一台2500萬，明年150-200台"
+      "reason": "代理 ADST 的設備，一台2500萬，明年150-200台",
+      "recommender": "Daivd"
     },
     {
       "code": "6213",
       "name": "聯茂",
       "group": "watchlist",
       "market": "tse",
-      "reason": "因華通低軌缺CCL，2383/6274產能給AI，因此華通開始驗證聯茂，進而打入低軌衛星業務，且未來會漲價"
+      "reason": "因華通低軌缺CCL，2383/6274產能給AI，因此華通開始驗證聯茂，進而打入低軌衛星業務，且未來會漲價",
+      "recommender": "Jack Lu"
     },
     {
       "code": "4906",
       "name": "正文",
       "group": "watchlist",
       "market": "tse",
-      "reason": "作多態度明確，但可以等營收開出，上半年營收差；威世波六月多上興櫃，做到100塊以上；正文會去談800g模塊代工"
+      "reason": "作多態度明確，但可以等營收開出，上半年營收差；威世波六月多上興櫃，做到100塊以上；正文會去談800g模塊代工",
+      "recommender": "光哥"
     },
     {
       "code": "6683",
       "name": "雍智",
       "group": "watchlist",
       "market": "otc",
-      "reason": "聯發科TPU訂單"
+      "reason": "聯發科TPU訂單",
+      "recommender": "Kevin"
     },
     {
       "code": "1303",
       "name": "南亞",
       "group": "watchlist",
       "market": "tse",
-      "reason": "漲價+缺E glass"
+      "reason": "漲價+缺E glass",
+      "recommender": "Kevin"
     },
     {
       "code": "6257",
       "name": "矽格",
       "group": "watchlist",
       "market": "tse",
-      "reason": "Mari/Lite訂單"
+      "reason": "Mari/Lite訂單",
+      "recommender": "David"
     },
     {
       "code": "6291",
       "name": "沛亨",
       "group": "watchlist",
       "market": "otc",
-      "reason": "光纖漲價"
+      "reason": "光纖漲價",
+      "recommender": "Tio"
     },
     {
       "code": "1717",
       "name": "長興",
       "group": "watchlist",
       "market": "tse",
-      "reason": "後面蘋果放量可關注，台積法說材料族群有機會"
+      "reason": "後面蘋果放量可關注，台積法說材料族群有機會",
+      "recommender": "Archy"
     },
     {
       "code": "6805",
       "name": "富世達",
       "group": "watchlist",
       "market": "tse",
-      "reason": "月增30%"
+      "reason": "月增30%",
+      "recommender": "Kevin"
     },
     {
       "code": "TAIEX",
@@ -103,112 +115,128 @@
       "name": "IET",
       "group": "watchlist",
       "market": "otc",
-      "reason": "50片InP給 Lite驗證"
+      "reason": "50片InP給 Lite驗證",
+      "recommender": "Tio"
     },
     {
       "code": "2377",
       "name": "微星",
       "group": "watchlist",
       "market": "tse",
-      "reason": "因戰爭且AI佔比少，推薦放空。"
+      "reason": "因戰爭且AI佔比少，推薦放空。",
+      "recommender": "Jack Lu"
     },
     {
       "code": "3017",
       "name": "奇鋐",
       "group": "watchlist",
       "market": "tse",
-      "reason": "月增25-30%"
+      "reason": "月增25-30%",
+      "recommender": "Kevin"
     },
     {
       "code": "3563",
       "name": "牧德",
       "group": "watchlist",
       "market": "tse",
-      "reason": "法說好"
+      "reason": "法說好",
+      "recommender": "Kevin"
     },
     {
       "code": "6451",
       "name": "訊芯",
       "group": "watchlist",
       "market": "tse",
-      "reason": "AVGO CPO封測/Molex 800g,1.6T，客戶涵蓋四大CSP；波若威找上訊芯合作"
+      "reason": "AVGO CPO封測/Molex 800g,1.6T，客戶涵蓋四大CSP；波若威找上訊芯合作",
+      "recommender": "Archy"
     },
     {
       "code": "7734",
       "name": "印能",
       "group": "watchlist",
       "market": "otc",
-      "reason": "有機會與3131比價，印能今明年EPS都將超過弘塑，且毛利率優於弘塑"
+      "reason": "有機會與3131比價，印能今明年EPS都將超過弘塑，且毛利率優於弘塑",
+      "recommender": "Jack Lu"
     },
     {
       "code": "7856",
       "name": "漢測",
       "group": "watchlist",
       "market": "otc",
-      "reason": "\"（1）此次法說公司提及重點有三：\n2026/04薄膜探針卡重要客戶TI將開始出貨，應用在5G、RF、高頻濾波器等，且2026/04也會送樣給矽光子客戶做驗證\n熱管理整合系統（為滿足 AI 測試商機中的散熱需求），今年開始導入實機\n矽光子設備：insertion 1會在今年有不錯的進展，insertion 2/3正在跟合作夥伴Ficontec開發自動化設備，並且派了兩組各10人的Team以因應美國客戶需求\n（2）試算明年Insertion 2/3的獲利貢獻，需考量漢測是出整機or模組（公司並未透漏）、台數假設（樂觀聽到有400台）、以及與Ficontec的分潤方式（公司並未透漏，假設整機淨利15%、模組20%），中立數字約46元，最樂觀預估約88元\n（3）Insertion 1算是法說意外驚喜，貢獻約落在10-20元，出貨60台，從2026/06開始\n\""
+      "reason": "\"（1）此次法說公司提及重點有三：\n2026/04薄膜探針卡重要客戶TI將開始出貨，應用在5G、RF、高頻濾波器等，且2026/04也會送樣給矽光子客戶做驗證\n熱管理整合系統（為滿足 AI 測試商機中的散熱需求），今年開始導入實機\n矽光子設備：insertion 1會在今年有不錯的進展，insertion 2/3正在跟合作夥伴Ficontec開發自動化設備，並且派了兩組各10人的Team以因應美國客戶需求\n（2）試算明年Insertion 2/3的獲利貢獻，需考量漢測是出整機or模組（公司並未透漏）、台數假設（樂觀聽到有400台）、以及與Ficontec的分潤方式（公司並未透漏，假設整機淨利15%、模組20%），中立數字約46元，最樂觀預估約88元\n（3）Insertion 1算是法說意外驚喜，貢獻約落在10-20元，出貨60台，從2026/06開始\n\"",
+      "recommender": "Archy"
     },
     {
       "code": "6830",
       "name": "汎銓",
       "group": "watchlist",
       "market": "tse",
-      "reason": "法說有提到跟nv合作，光衰檢測機器是買technoprobe的平台來改，nv派人每天跟他們cowork CPO材料"
+      "reason": "法說有提到跟nv合作，光衰檢測機器是買technoprobe的平台來改，nv派人每天跟他們cowork CPO材料",
+      "recommender": "Kevin"
     },
     {
       "code": "7909",
       "name": "鈺祥",
       "group": "watchlist",
       "market": "otc",
-      "reason": "\"（1）主要做氣濾，無塵室再把外面空氣抽進來時要過濾\n（2）以往都是一次性filter，但台積電注重ESG，現在要開發能重複利用的\n（3）看之後有沒有機會導入水濾\""
+      "reason": "\"（1）主要做氣濾，無塵室再把外面空氣抽進來時要過濾\n（2）以往都是一次性filter，但台積電注重ESG，現在要開發能重複利用的\n（3）看之後有沒有機會導入水濾\"",
+      "recommender": "Archy"
     },
     {
       "code": "3443",
       "name": "創意",
       "group": "watchlist",
       "market": "tse",
-      "reason": "\"（1）AI 5 Tape out\n（2）第一季獲利有機會是同期心高，NRE營收16億\""
+      "reason": "\"（1）AI 5 Tape out\n（2）第一季獲利有機會是同期心高，NRE營收16億\"",
+      "recommender": "Jack Lu"
     },
     {
       "code": "2402",
       "name": "毅嘉",
       "group": "watchlist",
       "market": "tse",
-      "reason": "\"（1）Coherent 既有光模塊SMT供應商包括旭創、大眾控旗下子公司及另一家中國未上市公司，但因26年800G光模塊需求爆發，既有供應商產能不足，2026年開始毅嘉將切入Coherent光模塊的SMT打件市場\n（2）狀況比大眾控晚2-3個月，之後增產業績就會往上\n（3）毅嘉二代跟智邦二代是學長學弟，智邦跟aws有合資一家美國公司，主要是做光模塊或是CPO，到時候也會給毅嘉做\""
+      "reason": "\"（1）Coherent 既有光模塊SMT供應商包括旭創、大眾控旗下子公司及另一家中國未上市公司，但因26年800G光模塊需求爆發，既有供應商產能不足，2026年開始毅嘉將切入Coherent光模塊的SMT打件市場\n（2）狀況比大眾控晚2-3個月，之後增產業績就會往上\n（3）毅嘉二代跟智邦二代是學長學弟，智邦跟aws有合資一家美國公司，主要是做光模塊或是CPO，到時候也會給毅嘉做\"",
+      "recommender": "Tio"
     },
     {
       "code": "6715",
       "name": "嘉基",
       "group": "watchlist",
       "market": "tse",
-      "reason": "有切入光通"
+      "reason": "有切入光通",
+      "recommender": "Archy"
     },
     {
       "code": "6829",
       "name": "千附精密",
       "group": "watchlist",
       "market": "otc",
-      "reason": "量子電腦"
+      "reason": "量子電腦",
+      "recommender": "Jack鄭"
     },
     {
       "code": "7828",
       "name": "創新服務",
       "group": "watchlist",
       "market": "otc",
-      "reason": "一片 cowos glass core 上面有三萬根銅柱起跳，最多有12w根，一片300 usd以上。做一片10分鐘"
+      "reason": "一片 cowos glass core 上面有三萬根銅柱起跳，最多有12w根，一片300 usd以上。做一片10分鐘",
+      "recommender": "Jack鄭"
     },
     {
       "code": "4768",
       "name": "晶呈科技",
       "group": "watchlist",
       "market": "otc",
-      "reason": "TGV 晶呈目前良率是最好的，但康寧也宣稱要做"
+      "reason": "TGV 晶呈目前良率是最好的，但康寧也宣稱要做",
+      "recommender": "Archy"
     },
     {
       "code": "6920",
       "name": "恆勁",
       "group": "watchlist",
       "market": "otc",
-      "reason": "TI、英飛凌有使用恆勁的載板進行微縮，受惠ai server mother board的VRM微縮需求"
+      "reason": "TI、英飛凌有使用恆勁的載板進行微縮，受惠ai server mother board的VRM微縮需求",
+      "recommender": "Cliff"
     },
     {
       "code": "3081",
@@ -216,10 +244,426 @@
       "group": "watchlist",
       "market": "otc",
       "reason": "出3吋給敏芯，這個月剛好過認證所以出很多量，因為之前庫存卡著所以一次出很多",
-      "addedWeekStart": "2026-04-07"
+      "addedWeekStart": "2026-04-07",
+      "recommender": "Tio"
+    },
+    {
+      "code": "6531",
+      "name": "愛普",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "（1）產能擴張時程： 2026 年自 Q1 的 3K 逐季拉升，至 Q4 達 10K；2027 年預計月均產能跳升至 15K（年產 18 萬片）。\r\n（2）營收貢獻： 以單價 4,000 美元計算，2027 年 INP 貢獻營收約 216 億元，對比 2025 年 57 億元的總營收，成長將近 4 倍。\r\n（3）需求驗證： 參考 Broadcom (AVGO) TPU 需求，若 2027 年出貨 400 萬顆、每片晶圓切 20 顆計算，光 TPU 就需 20 萬片產能。加計 TH5/6 交換器需求，愛普規劃的 18 萬片產能具高度合理性。\r\n（4）interposer放量，之前再psmc做，出給avgo，現在聯電加進來，產能會比現在多7x，光這塊明年就20塊、IPD consumer使用，聯發科之後旗艦手機會用。ASIC之後會講是哪一顆，明年會貢獻5-10塊",
+      "recommender": "Archy",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "2454",
+      "name": "聯發科",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "（1）TPU投片量優於市場預期\r\n（2）ECO問題解決",
+      "recommender": "Jack Lu",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "4739",
+      "name": "康普",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "（1）固態電池，量產的廠商少，但康普美琪瑪都有在送美國廠商，做硫酸鎳硫酸估的。這個族群四五年會有一個大週期\r\n（2）康普持有天弘化6x%，天弘化市值多100億。公司做完天弘化要來做康普",
+      "recommender": "Archy",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "4721",
+      "name": "美琪瑪",
+      "group": "watchlist",
+      "market": "otc",
+      "reason": "固態電池，量產的廠商少，但康普美琪瑪都有在送美國廠商，做硫酸鎳硫酸估的。這個族群四五年會有一個大週期",
+      "recommender": "Kevin",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "1711",
+      "name": "永光",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "永光完全幫jsr代工，也有打進去台積電供應鏈\r\n今年2塊",
+      "recommender": "David",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "4908",
+      "name": "前鼎",
+      "group": "watchlist",
+      "market": "otc",
+      "reason": "（1）以前都是工控，eps都三塊附近，做2.5-10g。\r\n（2）去年開始做ELSFP給CPO用，一直都沒量產，最近OFC有展出來，一個月出貨百來隻，一隻大概一千美金，下半年一個月可能900隻，貢獻營收成長就會很多，毛利也高，本週五法說",
+      "recommender": "Tio",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "6861",
+      "name": "睿生光電",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "會再從市場買10%股份",
+      "recommender": "Archy",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "2360",
+      "name": "致茂",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "SLT那邊google、amd都有下，60台，SLT營收本來是80e會上修到100-120億",
+      "recommender": "Tio",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "8021",
+      "name": "尖點",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "漲價三位數",
+      "recommender": "Jack鄭",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "2486",
+      "name": "一詮",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "能做到半導體等級只有健策一詮，現在換二代比較扎實。rubin開始出貨，應該要往先前的故事邁進，後面還會發cb，會拉高",
+      "recommender": "Archy",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "6456",
+      "name": "GIS",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "TGV 晶呈目前良率是最好的，但康寧也宣稱要做",
+      "recommender": "Tio",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "3289",
+      "name": "宜特",
+      "group": "watchlist",
+      "market": "otc",
+      "reason": "（1）宜特位階偏低，子公司宜景虧損認列要結束了，第三季虧轉盈，上禮拜有小場，今年預計做八塊。過一兩週宜特惠跟nv辦研討會\r\n（2）宜特有做測試介面的探針版卡/pcr的socket，雖然不會跟探針卡三雄這麼高端，不過會先從成熟ic載板開始做",
+      "recommender": "Kevin",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "3673",
+      "name": "TPK",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "要做跟tgv鑽孔，要跟晶呈做類似的事情，有來創新promote",
+      "recommender": "Tio",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "4919",
+      "name": "新唐",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "（1）今年轉虧為贏，BMC那塊聽到msft general server會打進去\r\n（2）除了general server之外，asic也有進展，tpu v6",
+      "recommender": "Archy",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "6141",
+      "name": "柏承",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "做msap，以前做小米，現在光通focus陸場光模塊，隨便做到一間小家的，都比台灣大",
+      "recommender": "Tio",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "2376",
+      "name": "技嘉",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "技剛接到轉單",
+      "recommender": "",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "2303",
+      "name": "聯電",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "中際旭創pic再那邊投，已經做了2季了。pic會做的： 做光模組的廠商、專門做PIC的廠商也會開（幫aws/csp廠有在設計高階光模組的會幫忙開），有很大一部分投在聯電新加坡場",
+      "recommender": "Jack鄭",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "3008",
+      "name": "大立光",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "出稜鏡 \r\n6789出metalen 合聖組裝成fau再供貨給台積nv\r\n在群創測試\r\n大立光7玉晶光3，AMD的部分",
+      "recommender": "Archy",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "3581",
+      "name": "博磊",
+      "group": "watchlist",
+      "market": "otc",
+      "reason": "旺矽大股東投的，做一些簡單的板子 有案子在幫旺矽做cpo testing probe card",
+      "recommender": "Kevin",
+      "addedWeekStart": "2026-04-13"
+    },
+    {
+      "code": "3550",
+      "name": "聯穎",
+      "group": "watchlist",
+      "market": "tse",
+      "reason": "聯電光通訊子公司",
+      "recommender": "Jack鄭",
+      "addedWeekStart": "2026-03-27"
     }
   ],
   "weeks": [
+    {
+      "id": "w2026-04-13",
+      "startDate": "2026-04-13",
+      "endDate": "2026-04-17",
+      "weekNum": 16,
+      "prices": {
+        "1303": {
+          "mon": 83,
+          "fri": 87.7
+        },
+        "1711": {
+          "mon": 39.05,
+          "fri": 47.95
+        },
+        "1717": {
+          "mon": 80,
+          "fri": 81
+        },
+        "2303": {
+          "mon": 61.5,
+          "fri": 73
+        },
+        "2360": {
+          "mon": 1795,
+          "fri": 2255
+        },
+        "2377": {
+          "mon": 90.1,
+          "fri": 91.9
+        },
+        "2402": {
+          "mon": 61.8,
+          "fri": 77.7
+        },
+        "2454": {
+          "mon": 1645,
+          "fri": 1925
+        },
+        "2486": {
+          "mon": 188,
+          "fri": 185
+        },
+        "3008": {
+          "mon": 2310,
+          "fri": 2605
+        },
+        "3017": {
+          "mon": 2280,
+          "fri": 2400
+        },
+        "3081": {
+          "mon": 2385,
+          "fri": 2600
+        },
+        "3093": {
+          "mon": 57.3,
+          "fri": 73
+        },
+        "3289": {
+          "mon": 151.5,
+          "fri": 180
+        },
+        "3443": {
+          "mon": 2620,
+          "fri": 3255
+        },
+        "3563": {
+          "mon": 910,
+          "fri": 957
+        },
+        "3581": {
+          "mon": 78.7,
+          "fri": 119
+        },
+        "3595": {
+          "mon": 1765,
+          "fri": 2180
+        },
+        "3673": {
+          "mon": 50.6,
+          "fri": 72.1
+        },
+        "4721": {
+          "mon": 79,
+          "fri": 91.2
+        },
+        "4739": {
+          "mon": 85.5,
+          "fri": 90.4
+        },
+        "4768": {
+          "mon": 483,
+          "fri": 462.5
+        },
+        "4906": {
+          "mon": 39.65,
+          "fri": 37.75
+        },
+        "4908": {
+          "mon": 132,
+          "fri": 170.5
+        },
+        "4919": {
+          "mon": 90.5,
+          "fri": 129
+        },
+        "4971": {
+          "mon": 637,
+          "fri": 767
+        },
+        "5475": {
+          "mon": 292,
+          "fri": 368.5
+        },
+        "6141": {
+          "mon": 24.1,
+          "fri": 31.2
+        },
+        "6147": {
+          "mon": 112,
+          "fri": 115
+        },
+        "6213": {
+          "mon": 210,
+          "fri": 270.5
+        },
+        "6257": {
+          "mon": 175.5,
+          "fri": 177.5
+        },
+        "6291": {
+          "mon": 417,
+          "fri": 421.5
+        },
+        "6451": {
+          "mon": 442,
+          "fri": 505
+        },
+        "6456": {
+          "mon": 53.3,
+          "fri": 77.6
+        },
+        "6531": {
+          "mon": 510,
+          "fri": 644
+        },
+        "6683": {
+          "mon": 1700,
+          "fri": 1870
+        },
+        "6715": {
+          "mon": 425,
+          "fri": 426
+        },
+        "6805": {
+          "mon": 1855,
+          "fri": 1870
+        },
+        "6829": {
+          "mon": 136,
+          "fri": 197
+        },
+        "6830": {
+          "mon": 701,
+          "fri": 885
+        },
+        "6861": {
+          "mon": 133.5,
+          "fri": 161.5
+        },
+        "6920": {
+          "mon": 65,
+          "fri": 79.7
+        },
+        "7721": {
+          "mon": 86,
+          "fri": 87.5
+        },
+        "7734": {
+          "mon": 2685,
+          "fri": 2505
+        },
+        "7828": {
+          "mon": 1355,
+          "fri": 1430
+        },
+        "7856": {
+          "mon": 3440,
+          "fri": 3420
+        },
+        "7909": {
+          "mon": 845,
+          "fri": 943
+        },
+        "8021": {
+          "mon": 346,
+          "fri": 390.5
+        },
+        "TAIEX": {
+          "mon": 35422.91,
+          "fri": 36804.34
+        }
+      },
+      "topVotes": [
+        "6451",
+        "6147",
+        "1717",
+        "3595",
+        "3093"
+      ],
+      "hiddenStocks": [
+        "7721",
+        "3595",
+        "4906",
+        "6683",
+        "1303",
+        "6257",
+        "6291",
+        "1717",
+        "6805",
+        "4971",
+        "2377",
+        "3017",
+        "3563",
+        "7734",
+        "6830",
+        "7909",
+        "3443",
+        "6829",
+        "7828",
+        "4768",
+        "3081",
+        "2376"
+      ]
+    },
     {
       "id": "w2026-04-07",
       "startDate": "2026-04-07",
@@ -230,9 +674,21 @@
           "mon": 79.8,
           "fri": 81.6
         },
+        "1711": {
+          "mon": 40.25,
+          "fri": 38.7
+        },
         "1717": {
           "mon": 63.5,
           "fri": 80
+        },
+        "2303": {
+          "mon": 54.7,
+          "fri": 62
+        },
+        "2360": {
+          "mon": 1580,
+          "fri": 1785
         },
         "2377": {
           "mon": 88.5,
@@ -241,6 +697,18 @@
         "2402": {
           "mon": 52.7,
           "fri": 61.3
+        },
+        "2454": {
+          "mon": 1480,
+          "fri": 1575
+        },
+        "2486": {
+          "mon": 160.5,
+          "fri": 185.5
+        },
+        "3008": {
+          "mon": 2180,
+          "fri": 2310
         },
         "3017": {
           "mon": 2150,
@@ -254,6 +722,10 @@
           "mon": 51.5,
           "fri": 63.6
         },
+        "3289": {
+          "mon": 131.5,
+          "fri": 155.5
+        },
         "3443": {
           "mon": 2400,
           "fri": 2665
@@ -262,9 +734,25 @@
           "mon": 800,
           "fri": 922
         },
+        "3581": {
+          "mon": 68.5,
+          "fri": 74.5
+        },
         "3595": {
           "mon": 1790,
           "fri": 1770
+        },
+        "3673": {
+          "mon": 45.9,
+          "fri": 50
+        },
+        "4721": {
+          "mon": 73,
+          "fri": 78.2
+        },
+        "4739": {
+          "mon": 77.8,
+          "fri": 84.6
         },
         "4768": {
           "mon": 434.5,
@@ -274,6 +762,14 @@
           "mon": 40.3,
           "fri": 40.2
         },
+        "4908": {
+          "mon": 103,
+          "fri": 129
+        },
+        "4919": {
+          "mon": 92.4,
+          "fri": 91.6
+        },
         "4971": {
           "mon": 594,
           "fri": 647
@@ -281,6 +777,10 @@
         "5475": {
           "mon": 256.5,
           "fri": 292
+        },
+        "6141": {
+          "mon": 19.5,
+          "fri": 24.1
         },
         "6147": {
           "mon": 91,
@@ -302,6 +802,14 @@
           "mon": 316,
           "fri": 432
         },
+        "6456": {
+          "mon": 56.4,
+          "fri": 52.8
+        },
+        "6531": {
+          "mon": 469,
+          "fri": 516
+        },
         "6683": {
           "mon": 1490,
           "fri": 1700
@@ -322,9 +830,13 @@
           "mon": 611,
           "fri": 700
         },
+        "6861": {
+          "mon": 133.5,
+          "fri": 136
+        },
         "6920": {
           "mon": 39.95,
-          "fri": 62.8
+          "fri": 64
         },
         "7721": {
           "mon": 84.1,
@@ -346,6 +858,10 @@
           "mon": 920,
           "fri": 838
         },
+        "8021": {
+          "mon": 250,
+          "fri": 317.5
+        },
         "TAIEX": {
           "mon": 32671.52,
           "fri": 35417.83
@@ -357,6 +873,20 @@
         "5475",
         "3595",
         "1717"
+      ],
+      "hiddenStocks": [
+        "7721",
+        "3595",
+        "4906",
+        "6683",
+        "1303",
+        "6291",
+        "6805",
+        "4971",
+        "2377",
+        "3017",
+        "3563",
+        "3550"
       ]
     },
     {
@@ -370,9 +900,21 @@
           "mon": 73.6,
           "fri": 77.1
         },
+        "1711": {
+          "mon": 37.65,
+          "fri": 37.5
+        },
         "1717": {
           "mon": 60.6,
           "fri": 61.9
+        },
+        "2303": {
+          "mon": 57.1,
+          "fri": 53.6
+        },
+        "2360": {
+          "mon": 1560,
+          "fri": 1535
         },
         "2377": {
           "mon": 89.6,
@@ -381,6 +923,18 @@
         "2402": {
           "mon": 51.5,
           "fri": 52.8
+        },
+        "2454": {
+          "mon": 1560,
+          "fri": 1465
+        },
+        "2486": {
+          "mon": 145,
+          "fri": 149
+        },
+        "3008": {
+          "mon": 2215,
+          "fri": 2140
         },
         "3017": {
           "mon": 2200,
@@ -394,17 +948,41 @@
           "mon": 40,
           "fri": 47.9
         },
+        "3289": {
+          "mon": 133,
+          "fri": 129
+        },
         "3443": {
           "mon": 2470,
           "fri": 2320
+        },
+        "3550": {
+          "mon": 17.2,
+          "fri": 17.6
         },
         "3563": {
           "mon": 770,
           "fri": 775
         },
+        "3581": {
+          "mon": 73.8,
+          "fri": 65.8
+        },
         "3595": {
           "mon": 1475,
           "fri": 1770
+        },
+        "3673": {
+          "mon": 46,
+          "fri": 44.3
+        },
+        "4721": {
+          "mon": 72.8,
+          "fri": 72.1
+        },
+        "4739": {
+          "mon": 83,
+          "fri": 76.4
         },
         "4768": {
           "mon": 448,
@@ -414,6 +992,14 @@
           "mon": 37,
           "fri": 39.3
         },
+        "4908": {
+          "mon": 104,
+          "fri": 101
+        },
+        "4919": {
+          "mon": 94.4,
+          "fri": 92.4
+        },
         "4971": {
           "mon": 506,
           "fri": 564
@@ -421,6 +1007,10 @@
         "5475": {
           "mon": 202,
           "fri": 246.5
+        },
+        "6141": {
+          "mon": 20,
+          "fri": 20.95
         },
         "6147": {
           "mon": 77,
@@ -442,6 +1032,14 @@
           "mon": 319,
           "fri": 295.5
         },
+        "6456": {
+          "mon": 60.1,
+          "fri": 56
+        },
+        "6531": {
+          "mon": 496,
+          "fri": 440
+        },
         "6683": {
           "mon": 1215,
           "fri": 1450
@@ -461,6 +1059,10 @@
         "6830": {
           "mon": 441,
           "fri": 565
+        },
+        "6861": {
+          "mon": 144,
+          "fri": 129
         },
         "6920": {
           "mon": 42.6,
@@ -486,6 +1088,10 @@
           "mon": 892,
           "fri": 908
         },
+        "8021": {
+          "mon": 253,
+          "fri": 242.5
+        },
         "TAIEX": {
           "mon": 33267.25,
           "fri": 32572.43
@@ -502,9 +1108,10 @@
         "7909",
         "6830",
         "7856",
-        "7734"
+        "7734",
+        "3595"
       ]
     }
   ],
-  "lastModified": 1775957165018
+  "lastModified": 1776785863539
 }
