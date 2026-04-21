@@ -1166,6 +1166,7 @@ async function handleExcelUpload(event) {
 
     // Parse data rows
     const parsed = [];
+    console.log('[excel] header at row', headerIdx, '| colName=', colName, 'colRec=', colRecommender, 'colReason=', colReason);
     for (let i = headerIdx + 1; i < rows.length; i++) {
       const row = rows[i];
       if (!row) continue;
@@ -1173,8 +1174,8 @@ async function handleExcelUpload(event) {
       if (!stockName) continue;
       const recommender = colRecommender >= 0 ? String(row[colRecommender] || '').trim() : '';
       const reason = colReason >= 0 ? String(row[colReason] || '').trim() : '';
-      // Skip if stock already exists
       const existing = appData.stocks.find(s => s.name === stockName);
+      console.log(`[excel] row ${i}: name="${stockName}", rec="${recommender}", existing=${!!existing}`);
       parsed.push({
         name: stockName,
         recommender: recommender,
@@ -1182,7 +1183,7 @@ async function handleExcelUpload(event) {
         code: existing ? existing.code : '',
         market: existing ? existing.market : 'tse',
         status: existing ? 'exists' : 'new',
-        skip: !!existing
+        skip: false  // 預設都勾選，不管是否已存在
       });
     }
 
@@ -1193,32 +1194,35 @@ async function handleExcelUpload(event) {
 
     excelImportData = parsed;
 
-    // Auto-lookup codes for new stocks
-    showToast(`找到 ${parsed.length} 檔股票，正在自動查詢代號...`, 'success');
-    let lookupCount = 0;
-    for (const item of parsed) {
-      if (item.status === 'exists') continue;
-      try {
-        const result = await searchStockCode(item.name);
-        if (result) {
-          item.code = result.code;
-          item.market = result.market;
-          item.lookupStatus = 'ok';
-          lookupCount++;
-        } else {
+    // Auto-lookup codes for new stocks only
+    const newItems = parsed.filter(item => item.status === 'new');
+    if (newItems.length > 0) {
+      showToast(`找到 ${parsed.length} 檔股票（${newItems.length} 檔新股票），正在自動查詢代號...`, 'success');
+      let lookupCount = 0;
+      for (const item of newItems) {
+        try {
+          const result = await searchStockCode(item.name);
+          if (result) {
+            item.code = result.code;
+            item.market = result.market;
+            item.lookupStatus = 'ok';
+            lookupCount++;
+          } else {
+            item.lookupStatus = 'fail';
+          }
+        } catch(e) {
           item.lookupStatus = 'fail';
+          console.warn(`[excel] lookup failed for ${item.name}`, e);
         }
-      } catch(e) {
-        item.lookupStatus = 'fail';
-        console.warn(`[excel] lookup failed for ${item.name}`, e);
+        await new Promise(r => setTimeout(r, 300));
       }
-      // Rate limit
-      await new Promise(r => setTimeout(r, 300));
+      showToast(`代號查詢完成（成功 ${lookupCount} 檔）`, 'success');
+    } else {
+      showToast(`找到 ${parsed.length} 檔股票（全部已存在，可更新推薦人）`, 'success');
     }
 
     renderExcelPreview();
     document.getElementById('excelImportModal').classList.add('show');
-    showToast(`代號查詢完成（成功 ${lookupCount} 檔）`, 'success');
 
   } catch(e) {
     console.error('[excel import]', e);
@@ -1261,23 +1265,34 @@ async function searchStockCode(stockName) {
 
 function renderExcelPreview() {
   const container = document.getElementById('excelPreviewContent');
-  let html = `<div style="overflow-x:auto"><table class="excel-preview-table">
+  const newCount = excelImportData.filter(i => i.status === 'new').length;
+  const existCount = excelImportData.filter(i => i.status === 'exists').length;
+
+  let html = `<p style="font-size:13px; color:var(--text); margin-bottom:8px;">
+    共 ${excelImportData.length} 檔：
+    <span style="color:var(--green)">${newCount} 檔新股票</span>，
+    <span style="color:var(--gold)">${existCount} 檔已存在（將更新推薦人）</span>
+  </p>`;
+
+  html += `<div style="overflow-x:auto"><table class="excel-preview-table">
     <thead><tr>
       <th>匯入</th><th>推薦人</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
     </tr></thead><tbody>`;
 
   excelImportData.forEach((item, idx) => {
     const statusHtml = item.status === 'exists'
-      ? `<span class="status-warn">已存在</span>`
+      ? `<span class="status-warn">已存在 · 更新推薦人</span>`
       : item.lookupStatus === 'ok'
         ? `<span class="status-ok">✓ 已查到</span>`
-        : `<span class="status-fail">✗ 請手動填</span>`;
+        : item.lookupStatus === 'fail'
+          ? `<span class="status-fail">✗ 請手動填</span>`
+          : `<span class="status-warn">待查詢</span>`;
 
-    html += `<tr>
-      <td><input type="checkbox" id="excelChk${idx}" ${item.skip ? '' : 'checked'} ${item.status === 'exists' ? 'disabled' : ''}></td>
+    html += `<tr style="${item.status === 'exists' ? 'opacity:.8' : ''}">
+      <td><input type="checkbox" id="excelChk${idx}" checked></td>
       <td>${item.recommender || '-'}</td>
       <td style="font-weight:600">${item.name}</td>
-      <td><input id="excelCode${idx}" value="${item.code}" placeholder="代號" ${item.status === 'exists' ? 'disabled' : ''}></td>
+      <td><input id="excelCode${idx}" value="${item.code}" placeholder="代號" ${item.status === 'exists' ? 'readonly style="background:transparent;border-color:transparent;color:var(--text2)"' : ''}></td>
       <td><select id="excelMarket${idx}" ${item.status === 'exists' ? 'disabled' : ''}>
         <option value="tse" ${item.market === 'tse' ? 'selected' : ''}>上市</option>
         <option value="otc" ${item.market === 'otc' ? 'selected' : ''}>上櫃</option>
@@ -1295,7 +1310,7 @@ async function confirmExcelImport() {
   const currentWeek = appData.weeks[currentWeekIdx];
   if (!currentWeek) { showToast('請先選擇要匯入的週別', 'error'); return; }
 
-  let imported = 0, skipped = 0;
+  let added = 0, updated = 0, skipped = 0;
   const newStockCodes = [];
 
   for (let i = 0; i < excelImportData.length; i++) {
@@ -1312,49 +1327,61 @@ async function confirmExcelImport() {
       continue;
     }
 
-    // Skip if already exists
-    if (appData.stocks.find(s => s.code === code)) {
-      skipped++;
-      continue;
+    const existing = appData.stocks.find(s => s.code === code);
+    if (existing) {
+      // 已存在的股票 → 更新推薦人、選擇原因，並確保在當週可見
+      if (item.recommender) existing.recommender = item.recommender;
+      if (item.reason && !existing.reason) existing.reason = item.reason;
+      // 確保不被當週隱藏
+      if (currentWeek.hiddenStocks) {
+        currentWeek.hiddenStocks = currentWeek.hiddenStocks.filter(c => c !== code);
+      }
+      updated++;
+    } else {
+      // 新股票 → 新增
+      const addedWeekStart = currentWeek.startDate;
+      appData.stocks.push({
+        code, name: item.name, group: 'watchlist', market,
+        reason: item.reason, recommender: item.recommender,
+        addedWeekStart
+      });
+      newStockCodes.push({ code, market });
+      added++;
     }
-
-    const addedWeekStart = currentWeek.startDate;
-    appData.stocks.push({
-      code, name: item.name, group: 'watchlist', market,
-      reason: item.reason, recommender: item.recommender,
-      addedWeekStart
-    });
-    newStockCodes.push({ code, market });
-    imported++;
   }
 
   saveData();
   closeModal('excelImportModal');
   render();
 
-  if (imported === 0) {
-    showToast('沒有新增任何股票', 'error');
+  if (added === 0 && updated === 0) {
+    showToast('沒有任何變更', 'error');
     return;
   }
 
-  showToast(`成功匯入 ${imported} 檔股票${skipped > 0 ? `（跳過 ${skipped} 檔）` : ''}，正在抓取收盤價...`, 'success');
+  const msgs = [];
+  if (added > 0) msgs.push(`新增 ${added} 檔`);
+  if (updated > 0) msgs.push(`更新 ${updated} 檔推薦人`);
+  if (skipped > 0) msgs.push(`跳過 ${skipped} 檔`);
+  showToast(`${msgs.join('，')}${added > 0 ? '，正在抓取收盤價...' : ''}`, 'success');
 
-  // Auto-fetch prices for newly imported stocks
-  let fetchSuccess = 0;
-  for (const { code, market } of newStockCodes) {
-    try {
-      const weeksToFill = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
-      const { filled } = await backfillStockPrices(code, market, weeksToFill);
-      if (filled > 0) fetchSuccess++;
-    } catch(e) {
-      console.warn(`[excel import] fetch failed for ${code}`, e);
+  // Auto-fetch prices for newly added stocks
+  if (newStockCodes.length > 0) {
+    let fetchSuccess = 0;
+    for (const { code, market } of newStockCodes) {
+      try {
+        const weeksToFill = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
+        const { filled } = await backfillStockPrices(code, market, weeksToFill);
+        if (filled > 0) fetchSuccess++;
+      } catch(e) {
+        console.warn(`[excel import] fetch failed for ${code}`, e);
+      }
+      await new Promise(r => setTimeout(r, 500));
     }
-    await new Promise(r => setTimeout(r, 500)); // Rate limit
+    saveData();
+    render();
+    showToast(`匯入完成！新增 ${added} 檔（${fetchSuccess} 檔成功抓取收盤價）${updated > 0 ? `，更新 ${updated} 檔推薦人` : ''}`, 'success');
   }
-
-  saveData();
-  render();
-  showToast(`匯入完成！${imported} 檔股票，${fetchSuccess} 檔成功抓取收盤價`, 'success');
 }
 
 // 只把股票從「目前檢視那一週」隱藏，不影響其他週
