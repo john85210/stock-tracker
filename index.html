@@ -550,7 +550,8 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 <!-- Edit Price Modal -->
 <div class="modal-overlay" id="editPriceModal">
   <div class="modal">
-    <h3 id="editPriceTitle">編輯收盤價</h3>
+    <h3 id="editPriceTitle">編輯資訊</h3>
+    <div class="form-group"><label>推薦人</label><input id="editRecommender" placeholder="推薦人"></div>
     <div class="form-row">
       <div class="form-group"><label id="editMonLabel">週一開盤價</label><input type="number" step="0.01" id="editMonPrice"></div>
       <div class="form-group"><label id="editFriLabel">週五收盤價</label><input type="number" step="0.01" id="editFriPrice"></div>
@@ -1365,36 +1366,39 @@ function searchStockByName(name) {
   return null;
 }
 
+let excelRemoveList = []; // 不在 Excel 中、可能要剔除的股票
+
 function renderExcelPreview() {
   const container = document.getElementById('excelPreviewContent');
   const newCount = excelImportData.filter(i => i.status === 'new').length;
   const existCount = excelImportData.filter(i => i.status === 'exists').length;
 
-  // 計算將被剔除的股票
+  // 計算不在 Excel 中的當週股票
   const importedNames = new Set(excelImportData.map(i => i.name));
   const importedCodes = new Set(excelImportData.filter(i => i.code).map(i => i.code));
   const currentWeek = appData.weeks[currentWeekIdx];
   const visibleWatchlist = currentWeek ? getVisibleStocks(currentWeek, 'watchlist') : [];
-  const toRemove = visibleWatchlist.filter(s => !importedCodes.has(s.code) && !importedNames.has(s.name));
+  excelRemoveList = visibleWatchlist.filter(s => !importedCodes.has(s.code) && !importedNames.has(s.name));
 
-  let html = `<p style="font-size:13px; color:var(--text); margin-bottom:8px;">
-    共 ${excelImportData.length} 檔：
-    <span style="color:var(--green)">${newCount} 檔新股票</span>，
-    <span style="color:var(--gold)">${existCount} 檔已存在（更新推薦人）</span>
-    ${toRemove.length > 0 ? `，<span style="color:var(--red)">${toRemove.length} 檔將被剔除</span>` : ''}
+  let html = `<p style="font-size:13px; color:var(--text); margin-bottom:10px;">
+    Excel 共 ${excelImportData.length} 檔：
+    <span style="color:var(--green)">${newCount} 檔新增</span>，
+    <span style="color:var(--gold)">${existCount} 檔已存在</span>
+    ${excelRemoveList.length > 0 ? `｜本週有 <span style="color:var(--red)">${excelRemoveList.length} 檔不在 Excel 中</span>` : ''}
   </p>`;
 
-  if (toRemove.length > 0) {
-    html += `<div style="background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); border-radius:8px; padding:10px 14px; margin-bottom:10px; font-size:12px;">
-      <strong style="color:var(--red)">以下股票不在 Excel 中，確認匯入後將從本週剔除：</strong><br>
-      ${toRemove.map(s => `<span style="color:var(--text2); margin-right:10px;">${s.code} ${s.name}</span>`).join('')}
-    </div>`;
-  }
-
-  html += `<div style="overflow-x:auto"><table class="excel-preview-table">
-    <thead><tr>
-      <th>匯入</th><th>推薦人</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
-    </tr></thead><tbody>`;
+  // ---- 區塊一：要匯入的股票 ----
+  html += `<div style="margin-bottom:16px;">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+      <span style="font-size:14px; font-weight:700; color:var(--green);">&#x2795; 匯入清單</span>
+      <label style="font-size:11px; color:var(--text2); cursor:pointer; margin-left:auto;">
+        <input type="checkbox" checked onchange="toggleAllExcelChk('import', this.checked)"> 全選
+      </label>
+    </div>
+    <div style="overflow-x:auto"><table class="excel-preview-table">
+      <thead><tr>
+        <th style="width:36px">選</th><th>推薦人</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
+      </tr></thead><tbody>`;
 
   excelImportData.forEach((item, idx) => {
     const statusHtml = item.status === 'exists'
@@ -1405,8 +1409,8 @@ function renderExcelPreview() {
           ? `<span class="status-fail">✗ 請手動填</span>`
           : `<span class="status-warn">待查詢</span>`;
 
-    html += `<tr style="${item.status === 'exists' ? 'opacity:.8' : ''}">
-      <td><input type="checkbox" id="excelChk${idx}" checked></td>
+    html += `<tr style="${item.status === 'exists' ? 'opacity:.85' : ''}">
+      <td><input type="checkbox" class="excelImportChk" id="excelChk${idx}" checked></td>
       <td>${item.recommender || '-'}</td>
       <td style="font-weight:600">${item.name}</td>
       <td><input id="excelCode${idx}" value="${item.code}" placeholder="代號" ${item.status === 'exists' ? 'readonly style="background:transparent;border-color:transparent;color:var(--text2)"' : ''}></td>
@@ -1419,8 +1423,40 @@ function renderExcelPreview() {
     </tr>`;
   });
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
+
+  // ---- 區塊二：不在 Excel 中、可能要剔除的股票 ----
+  if (excelRemoveList.length > 0) {
+    html += `<div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span style="font-size:14px; font-weight:700; color:var(--red);">&#x274C; 本週有但 Excel 沒有（勾選 = 剔除）</span>
+        <label style="font-size:11px; color:var(--text2); cursor:pointer; margin-left:auto;">
+          <input type="checkbox" checked onchange="toggleAllExcelChk('remove', this.checked)"> 全選剔除
+        </label>
+      </div>
+      <div style="overflow-x:auto"><table class="excel-preview-table">
+        <thead><tr>
+          <th style="width:36px">剔除</th><th>代號</th><th>股票名稱</th><th>推薦人</th>
+        </tr></thead><tbody>`;
+
+    excelRemoveList.forEach((s, idx) => {
+      html += `<tr>
+        <td><input type="checkbox" class="excelRemoveChk" id="excelRemoveChk${idx}" checked></td>
+        <td style="font-weight:600; color:var(--accent2)">${s.code}</td>
+        <td>${s.name}</td>
+        <td style="color:var(--text2)">${s.recommender || '-'}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table></div></div>`;
+  }
+
   container.innerHTML = html;
+}
+
+function toggleAllExcelChk(type, checked) {
+  const cls = type === 'import' ? '.excelImportChk' : '.excelRemoveChk';
+  document.querySelectorAll(cls).forEach(chk => { chk.checked = checked; });
 }
 
 async function confirmExcelImport() {
@@ -1467,27 +1503,17 @@ async function confirmExcelImport() {
     }
   }
 
-  // ---- 自動剔除：上週有但 Excel 沒有的股票，從本週隱藏 ----
-  // 蒐集本次 Excel 匯入的所有代號（含已存在 + 新增的）
-  const importedCodes = new Set();
-  for (let i = 0; i < excelImportData.length; i++) {
-    const chk = document.getElementById(`excelChk${i}`);
-    if (!chk || !chk.checked) continue;
-    const code = document.getElementById(`excelCode${i}`).value.trim();
-    if (code) importedCodes.add(code);
-  }
-  // 找出本週原本可見的觀察股（不含加權指數）
-  const visibleWatchlist = getVisibleStocks(currentWeek, 'watchlist');
+  // ---- 剔除：依使用者勾選決定 ----
   let removed = 0;
   if (!currentWeek.hiddenStocks) currentWeek.hiddenStocks = [];
-  for (const s of visibleWatchlist) {
-    if (!importedCodes.has(s.code)) {
-      // 這檔不在 Excel 裡 → 從本週隱藏
-      if (!currentWeek.hiddenStocks.includes(s.code)) {
-        currentWeek.hiddenStocks.push(s.code);
-        removed++;
-        console.log(`[excel] 自動剔除 ${s.code} ${s.name}（不在 Excel 中）`);
-      }
+  for (let i = 0; i < excelRemoveList.length; i++) {
+    const chk = document.getElementById(`excelRemoveChk${i}`);
+    if (!chk || !chk.checked) continue; // 沒勾 = 保留
+    const code = excelRemoveList[i].code;
+    if (!currentWeek.hiddenStocks.includes(code)) {
+      currentWeek.hiddenStocks.push(code);
+      removed++;
+      console.log(`[excel] 剔除 ${code} ${excelRemoveList[i].name}`);
     }
   }
 
@@ -1547,23 +1573,29 @@ function showEditPrice(code, name) {
   editingCode = code;
   const week = appData.weeks[currentWeekIdx];
   const p = (week.prices || {})[code] || {};
-  document.getElementById('editPriceTitle').textContent = `${code} ${name} 價格`;
+  const stock = appData.stocks.find(s => s.code === code);
+  document.getElementById('editPriceTitle').textContent = `${code} ${name}`;
   document.getElementById('editMonLabel').textContent = `${week.startDate.slice(5)} 開盤價`;
   document.getElementById('editFriLabel').textContent = `${week.endDate.slice(5)} 收盤價`;
   document.getElementById('editMonPrice').value = p.mon || '';
   document.getElementById('editFriPrice').value = p.fri || '';
+  document.getElementById('editRecommender').value = (stock && stock.recommender) || '';
   showModal('editPriceModal');
 }
 
 function savePrice() {
   const mon = parseFloat(document.getElementById('editMonPrice').value) || null;
   const fri = parseFloat(document.getElementById('editFriPrice').value) || null;
+  const recommender = document.getElementById('editRecommender').value.trim();
   const week = appData.weeks[currentWeekIdx];
   if (!week.prices) week.prices = {};
   week.prices[editingCode] = { mon, fri };
+  // 更新推薦人
+  const stock = appData.stocks.find(s => s.code === editingCode);
+  if (stock) stock.recommender = recommender;
   saveData();
   closeModal('editPriceModal');
-  showToast('已更新收盤價', 'success');
+  showToast('已更新', 'success');
 }
 
 // ======================== WEEK MANAGEMENT ========================
@@ -1589,11 +1621,15 @@ function addWeek() {
   const jan1 = new Date(d.getFullYear(), 0, 1);
   const weekNum = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
 
-  appData.weeks.unshift({ id, startDate: start, endDate: end, weekNum, prices: {} });
+  // 複製上一週（最新一週）的 hiddenStocks，讓新週只繼承上週的可見持股
+  const prevWeek = appData.weeks[0]; // unshift 前的第 0 個就是「上一週」
+  const inheritHidden = (prevWeek && prevWeek.hiddenStocks) ? [...prevWeek.hiddenStocks] : [];
+
+  appData.weeks.unshift({ id, startDate: start, endDate: end, weekNum, prices: {}, hiddenStocks: inheritHidden, topVotes: [] });
   currentWeekIdx = 0;
   saveData();
   closeModal('addWeekModal');
-  showToast('已新增新週報', 'success');
+  showToast('已新增新週報（繼承上週持股）', 'success');
 }
 
 function deleteCurrentWeek() {
