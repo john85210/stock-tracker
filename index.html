@@ -67,6 +67,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .code { font-weight: 700; color: var(--accent2); font-size: 15px; }
 .name { font-weight: 600; }
 .recommender { font-size: 13px; color: var(--accent2); white-space: nowrap; }
+.report-date { font-size: 12px; color: var(--text2); white-space: nowrap; }
 .reason { max-width: 400px; font-size: 13px; color: var(--text2); line-height: 1.5; }
 .price { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .return-cell { font-weight: 700; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -485,7 +486,10 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
         <option value="otc">上櫃 (OTC)</option>
       </select>
     </div>
-    <div class="form-group"><label>推薦人</label><input id="stockRecommender" placeholder="例：Jack Lu"></div>
+    <div class="form-row">
+      <div class="form-group"><label>推薦人</label><input id="stockRecommender" placeholder="例：Jack Lu"></div>
+      <div class="form-group"><label>報牌時間</label><input id="stockReportDate" placeholder="例：2026/6/5"></div>
+    </div>
     <div class="form-group"><label>選擇原因</label><textarea id="stockReason" placeholder="為什麼選擇這檔股票？"></textarea></div>
     <div class="admin-actions">
       <button class="btn" onclick="closeModal('addStockModal')">取消</button>
@@ -551,7 +555,10 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 <div class="modal-overlay" id="editPriceModal">
   <div class="modal">
     <h3 id="editPriceTitle">編輯資訊</h3>
-    <div class="form-group"><label>推薦人</label><input id="editRecommender" placeholder="推薦人"></div>
+    <div class="form-row">
+      <div class="form-group"><label>推薦人</label><input id="editRecommender" placeholder="推薦人"></div>
+      <div class="form-group"><label>報牌時間</label><input id="editReportDate" placeholder="例：2026/6/5"></div>
+    </div>
     <div class="form-row">
       <div class="form-group"><label id="editMonLabel">週一開盤價</label><input type="number" step="0.01" id="editMonPrice"></div>
       <div class="form-group"><label id="editFriLabel">週五收盤價</label><input type="number" step="0.01" id="editFriPrice"></div>
@@ -956,7 +963,7 @@ function renderStockTables() {
     <div class="table-wrap"><table>
       <thead><tr>
         <th style="width:40px">#</th>
-        <th>代號</th><th>標的</th><th>推薦人</th><th>選擇原因</th>
+        <th>代號</th><th>標的</th><th>推薦人</th><th>報牌時間</th><th>選擇原因</th>
         <th style="text-align:right">${startDateLabel} 開盤</th>
         <th style="text-align:right">${endDateLabel} 收盤</th>
         <th style="text-align:right">${returnLabel}</th>
@@ -980,6 +987,7 @@ function renderStockTables() {
       </td>
       <td data-label="標的" class="name">${isIdx ? '<span style="color:var(--gold); font-weight:700">'+s.name+'</span>' : s.name}</td>
       <td data-label="推薦人" class="recommender">${s.recommender || '-'}</td>
+      <td data-label="報牌時間" class="report-date">${s.reportDate || '-'}</td>
       <td data-label="選擇原因" class="reason">${s.reason}</td>
       <td data-label="${startDateLabel} 開盤" class="price">${startPrice != null ? startPrice.toLocaleString() : '-'}</td>
       <td data-label="${endDateLabel} 收盤" class="price">${endPrice != null ? endPrice.toLocaleString() : '-'}</td>
@@ -1097,6 +1105,7 @@ async function addStock() {
   const market = document.getElementById('stockMarket').value;
   const reason = document.getElementById('stockReason').value.trim();
   const recommender = document.getElementById('stockRecommender').value.trim();
+  const reportDate = document.getElementById('stockReportDate').value.trim();
 
   if (!code || !name) { showToast('請填寫代號和名稱', 'error'); return; }
   if (appData.stocks.find(s => s.code === code)) { showToast('此代號已存在', 'error'); return; }
@@ -1104,7 +1113,7 @@ async function addStock() {
   // 紀錄這檔股票是在哪一週被新增的，避免出現在更早的週別裡
   const currentWeek = appData.weeks[currentWeekIdx];
   const addedWeekStart = currentWeek ? currentWeek.startDate : null;
-  appData.stocks.push({ code, name, group, market, reason, recommender, addedWeekStart });
+  appData.stocks.push({ code, name, group, market, reason, recommender, reportDate, addedWeekStart });
   saveData();
   closeModal('addStockModal');
   showToast(`已新增 ${code} ${name}，正在抓取當週與前 4 週收盤價...`, 'success');
@@ -1153,7 +1162,7 @@ async function handleExcelUpload(event) {
 
     // Find header row - look for a row containing '個股' or 'Column 5'
     let headerIdx = -1;
-    let colRecommender = -1, colName = -1, colReason = -1;
+    let colRecommender = -1, colName = -1, colReason = -1, colReportDate = -1;
     for (let i = 0; i < Math.min(rows.length, 10); i++) {
       const row = rows[i];
       if (!row) continue;
@@ -1161,10 +1170,12 @@ async function handleExcelUpload(event) {
       // Try to detect columns
       const nameIdx = cells.findIndex(c => c === '個股' || c.includes('股票') || c.includes('標的'));
       const reasonIdx = cells.findIndex(c => c === '故事' || c.includes('原因') || c.includes('理由'));
+      const dateIdx = cells.findIndex(c => c.includes('報牌') || c.includes('時間') || c.includes('日期') || c.includes('date'));
       if (nameIdx >= 0) {
         headerIdx = i;
         colName = nameIdx;
         colReason = reasonIdx >= 0 ? reasonIdx : -1;
+        colReportDate = dateIdx >= 0 ? dateIdx : -1;
         // Recommender is typically the column before stock name, or look for 'Column 5' or person-like header
         const recIdx = cells.findIndex(c => c.includes('Column') || c.includes('推薦') || c.includes('成員') || c.includes('姓名'));
         colRecommender = recIdx >= 0 ? recIdx : (nameIdx > 0 ? 0 : -1);
@@ -1179,11 +1190,12 @@ async function handleExcelUpload(event) {
       colRecommender = 0;
       colName = 1;
       colReason = 2;
+      colReportDate = -1;
     }
 
     // Parse data rows
     const parsed = [];
-    console.log('[excel] header at row', headerIdx, '| colName=', colName, 'colRec=', colRecommender, 'colReason=', colReason);
+    console.log('[excel] header at row', headerIdx, '| colName=', colName, 'colRec=', colRecommender, 'colReason=', colReason, 'colDate=', colReportDate);
     for (let i = headerIdx + 1; i < rows.length; i++) {
       const row = rows[i];
       if (!row) continue;
@@ -1191,16 +1203,23 @@ async function handleExcelUpload(event) {
       if (!stockName) continue;
       const recommender = colRecommender >= 0 ? String(row[colRecommender] || '').trim() : '';
       const reason = colReason >= 0 ? String(row[colReason] || '').trim() : '';
+      let reportDate = colReportDate >= 0 ? String(row[colReportDate] || '').trim() : '';
+      // Excel 日期可能是數字序號，轉成可讀格式
+      if (colReportDate >= 0 && typeof row[colReportDate] === 'number') {
+        const d = new Date((row[colReportDate] - 25569) * 86400000);
+        reportDate = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+      }
       const existing = appData.stocks.find(s => s.name === stockName);
-      console.log(`[excel] row ${i}: name="${stockName}", rec="${recommender}", existing=${!!existing}`);
+      console.log(`[excel] row ${i}: name="${stockName}", rec="${recommender}", date="${reportDate}", existing=${!!existing}`);
       parsed.push({
         name: stockName,
         recommender: recommender,
+        reportDate: reportDate,
         reason: reason,
         code: existing ? existing.code : '',
         market: existing ? existing.market : 'tse',
         status: existing ? 'exists' : 'new',
-        skip: false  // 預設都勾選，不管是否已存在
+        skip: false
       });
     }
 
@@ -1397,7 +1416,7 @@ function renderExcelPreview() {
     </div>
     <div style="overflow-x:auto"><table class="excel-preview-table">
       <thead><tr>
-        <th style="width:36px">選</th><th>推薦人</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
+        <th style="width:36px">選</th><th>推薦人</th><th>報牌時間</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
       </tr></thead><tbody>`;
 
   excelImportData.forEach((item, idx) => {
@@ -1412,6 +1431,7 @@ function renderExcelPreview() {
     html += `<tr style="${item.status === 'exists' ? 'opacity:.85' : ''}">
       <td><input type="checkbox" class="excelImportChk" id="excelChk${idx}" checked></td>
       <td>${item.recommender || '-'}</td>
+      <td style="font-size:12px; color:var(--text2)">${item.reportDate || '-'}</td>
       <td style="font-weight:600">${item.name}</td>
       <td><input id="excelCode${idx}" value="${item.code}" placeholder="代號" ${item.status === 'exists' ? 'readonly style="background:transparent;border-color:transparent;color:var(--text2)"' : ''}></td>
       <td><select id="excelMarket${idx}" ${item.status === 'exists' ? 'disabled' : ''}>
@@ -1482,8 +1502,9 @@ async function confirmExcelImport() {
 
     const existing = appData.stocks.find(s => s.code === code);
     if (existing) {
-      // 已存在的股票 → 更新推薦人、選擇原因，並確保在當週可見
+      // 已存在的股票 → 更新推薦人、報牌時間、選擇原因，並確保在當週可見
       if (item.recommender) existing.recommender = item.recommender;
+      if (item.reportDate) existing.reportDate = item.reportDate;
       if (item.reason && !existing.reason) existing.reason = item.reason;
       // 確保不被當週隱藏
       if (currentWeek.hiddenStocks) {
@@ -1496,7 +1517,7 @@ async function confirmExcelImport() {
       appData.stocks.push({
         code, name: item.name, group: 'watchlist', market,
         reason: item.reason, recommender: item.recommender,
-        addedWeekStart
+        reportDate: item.reportDate, addedWeekStart
       });
       newStockCodes.push({ code, market });
       added++;
@@ -1580,6 +1601,7 @@ function showEditPrice(code, name) {
   document.getElementById('editMonPrice').value = p.mon || '';
   document.getElementById('editFriPrice').value = p.fri || '';
   document.getElementById('editRecommender').value = (stock && stock.recommender) || '';
+  document.getElementById('editReportDate').value = (stock && stock.reportDate) || '';
   showModal('editPriceModal');
 }
 
@@ -1587,12 +1609,16 @@ function savePrice() {
   const mon = parseFloat(document.getElementById('editMonPrice').value) || null;
   const fri = parseFloat(document.getElementById('editFriPrice').value) || null;
   const recommender = document.getElementById('editRecommender').value.trim();
+  const reportDate = document.getElementById('editReportDate').value.trim();
   const week = appData.weeks[currentWeekIdx];
   if (!week.prices) week.prices = {};
   week.prices[editingCode] = { mon, fri };
-  // 更新推薦人
+  // 更新推薦人、報牌時間
   const stock = appData.stocks.find(s => s.code === editingCode);
-  if (stock) stock.recommender = recommender;
+  if (stock) {
+    stock.recommender = recommender;
+    stock.reportDate = reportDate;
+  }
   saveData();
   closeModal('editPriceModal');
   showToast('已更新', 'success');
@@ -1923,10 +1949,10 @@ async function exportData() {
 
   const monLabel = week.startDate.slice(5).replace('-', '/') + '開盤';
   const friLabel = week.endDate.slice(5).replace('-', '/') + '收盤';
-  const header = ['股票代號', '標的', '推薦人', '選擇原因', monLabel, friLabel, '本週報酬率'];
+  const header = ['股票代號', '標的', '推薦人', '報牌時間', '選擇原因', monLabel, friLabel, '本週報酬率'];
 
   const rows = [header];
-  const taiexRowData = ['', '加權指數', '', '', taiexP.mon ?? '', taiexP.fri ?? '',
+  const taiexRowData = ['', '加權指數', '', '', '', taiexP.mon ?? '', taiexP.fri ?? '',
                        taiexReturn != null ? taiexReturn / 100 : ''];
   let taiexInserted = false;
   let taiexRowIdx = -1;
@@ -1942,6 +1968,7 @@ async function exportData() {
       item.stock.code,
       item.stock.name,
       item.stock.recommender || '',
+      item.stock.reportDate || '',
       item.stock.reason || '',
       item.mon ?? '',
       item.fri ?? '',
@@ -1957,7 +1984,7 @@ async function exportData() {
 
   // 欄寬
   ws['!cols'] = [
-    { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 60 },
+    { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 60 },
     { wch: 12 }, { wch: 12 }, { wch: 14 }
   ];
 
@@ -1992,7 +2019,7 @@ async function exportData() {
 
       const style = {
         font: { sz: 11 },
-        alignment: { vertical: "center", wrapText: c === 3 },
+        alignment: { vertical: "center", wrapText: c === 4 },
         border: {
           top:    { style: "thin", color: { rgb: "EEEEEE" } },
           bottom: { style: "thin", color: { rgb: "EEEEEE" } },
@@ -2001,13 +2028,13 @@ async function exportData() {
         }
       };
 
-      // 代號、推薦人、收盤、報酬率置中
-      if (c === 0 || c === 2 || c === 4 || c === 5 || c === 6) {
+      // 代號、推薦人、報牌時間、收盤、報酬率置中
+      if (c === 0 || c === 2 || c === 3 || c === 5 || c === 6 || c === 7) {
         style.alignment.horizontal = "center";
       }
 
       // 報酬率欄格式化為百分比，並上色（紅漲綠跌）
-      if (c === 6) {
+      if (c === 7) {
         ws[addr].z = '0.00%;[Red]-0.00%';
         const val = ws[addr].v;
         if (typeof val === 'number') {
@@ -2020,7 +2047,7 @@ async function exportData() {
       if (isTaiex) {
         style.fill = { patternType: "solid", fgColor: { rgb: "DCE8F4" } };
         style.font = { ...style.font, bold: true };
-        if (c === 6 && typeof ws[addr].v === 'number') {
+        if (c === 7 && typeof ws[addr].v === 'number') {
           const v = ws[addr].v;
           style.font.color = { rgb: v >= 0 ? "CC0000" : "008800" };
         }
