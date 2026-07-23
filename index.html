@@ -994,57 +994,6 @@ function renderStockTables() {
     </div>`;
   }
 
-  // ---- Top 5 by Return + Broker Chips ----
-  const _weekBc = endWeek.brokerChips || {};
-  const _monthStocks = appData.brokerChipsMonth?.stocks;
-  const _hasAnyBc = Object.keys(_weekBc).length > 0 || !!_monthStocks;
-
-  if (_hasAnyBc) {
-    const _top5Ret = getVisibleStocks(endWeek, 'watchlist')
-      .map(s => { const {startPrice,endPrice}=getRangePrices(s.code); return {s, ret:calcReturn(startPrice,endPrice), sp:startPrice, ep:endPrice}; })
-      .filter(x => x.ret !== null)
-      .sort((a,b)=>b.ret-a.ret)
-      .slice(0,5);
-
-    if (_top5Ret.length > 0) {
-      html += `<div class="top5-section">
-        <div class="top5-header" style="border-bottom-color:var(--accent)">
-          <span class="top5-title" style="color:var(--accent2)">&#x1f4c8; 報酬前五名（含籌碼）</span>
-        </div>
-        <div class="top5-grid">`;
-
-      _top5Ret.forEach(({s,ret,sp,ep},i)=>{
-        const wbc = _weekBc[s.code];
-        const mbc = _monthStocks?.[s.code];
-        const topBuy  = wbc?.b?.[0];
-        const topSell = wbc?.s?.[0];
-        const mBuy1   = mbc?.mb?.[0];
-        const mSell1  = mbc?.ms?.[0];
-        const chipHtml = (topBuy||topSell) ? `
-          <div style="margin-top:6px;border-top:1px dashed rgba(71,85,105,.4);padding-top:5px">
-            ${topBuy  ? `<div style="font-size:11px;color:var(--green);line-height:1.6">▲ ${topBuy[0]}&nbsp;+${topBuy[1].toLocaleString()}</div>` : ''}
-            ${topSell ? `<div style="font-size:11px;color:var(--red);line-height:1.6">▼ ${topSell[0]}&nbsp;${Math.abs(topSell[1]).toLocaleString()}</div>` : ''}
-          </div>` : (mBuy1||mSell1) ? `
-          <div style="margin-top:6px;border-top:1px dashed rgba(71,85,105,.4);padding-top:5px">
-            <div style="font-size:10px;color:var(--text2);margin-bottom:2px">月度</div>
-            ${mBuy1  ? `<div style="font-size:11px;color:var(--green);line-height:1.6">▲ ${mBuy1[0]}&nbsp;+${mBuy1[1].toLocaleString()}</div>` : ''}
-            ${mSell1 ? `<div style="font-size:11px;color:var(--red);line-height:1.6">▼ ${mSell1[0]}&nbsp;${Math.abs(mSell1[1]).toLocaleString()}</div>` : ''}
-          </div>` : '';
-
-        html += `<div class="top5-card" style="background:linear-gradient(135deg,rgba(59,130,246,.12) 0%,rgba(59,130,246,.03) 100%);border-color:rgba(59,130,246,.3)">
-          <div class="top5-rank" style="background:var(--accent)">${i+1}</div>
-          <div class="t5-code">${s.code} <span class="badge badge-${s.market}" style="font-size:10px">${s.market==='tse'?'上市':'上櫃'}</span></div>
-          <div class="t5-name">${s.name}</div>
-          <div class="t5-return ${ret>=0?'pos':'neg'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
-          <div class="t5-prices">${sp!=null?sp.toLocaleString():'-'} → ${ep!=null?ep.toLocaleString():'-'}</div>
-          ${chipHtml}
-        </div>`;
-      });
-
-      html += `</div></div>`;
-    }
-  }
-
   // ---- Main Stock Table ----
   html += `<div class="group-section">
     <div class="group-header">
@@ -2258,20 +2207,31 @@ function renderBrokerChips(code, weeks, monthStocks) {
   const uid = 'bc-' + code;
   const weekRows = weeks
     .filter(w => w.brokerChips && w.brokerChips[code])
-    .map(w => ({ id: w.id, label: BROKER_WEEK_LABELS[w.id] || w.id, chips: w.brokerChips[code] }));
+    .map(w => {
+      const p = w.prices && w.prices[code];
+      const ret = (p && p.mon != null && p.fri != null) ? ((p.fri - p.mon) / p.mon * 100) : null;
+      return { id: w.id, label: BROKER_WEEK_LABELS[w.id] || w.id, chips: w.brokerChips[code], ret };
+    });
   const monthData = monthStocks && monthStocks[code];
   if (!weekRows.length && !monthData) return '';
 
-  const tabs = weekRows.map((w, i) =>
-    `<span class="bc-tab${i===weekRows.length-1?' active':''}" onclick="bcTab('${uid}','${w.id}')" data-wid="${w.id}">${w.label}</span>`
-  ).join('');
+  const tabs = weekRows.map((w, i) => {
+    const retBadge = w.ret !== null
+      ? `<span style="margin-left:3px;font-size:.6rem;font-weight:700;color:${w.ret >= 0 ? 'var(--red)' : 'var(--green)'}">${w.ret >= 0 ? '+' : ''}${w.ret.toFixed(1)}%</span>`
+      : '';
+    return `<span class="bc-tab${i===weekRows.length-1?' active':''}" onclick="bcTab('${uid}','${w.id}')" data-wid="${w.id}">${w.label}${retBadge}</span>`;
+  }).join('');
   const monthTab = monthData
     ? `<span class="bc-tab" onclick="bcTab('${uid}','month')" data-wid="month">📅 月度</span>` : '';
 
   const weekPanels = weekRows.map((w, i) => {
+    const retLine = w.ret !== null
+      ? `<div style="grid-column:1/-1;font-size:11px;margin-bottom:4px;color:var(--text2)">該週報酬：<span style="font-weight:700;color:${w.ret >= 0 ? 'var(--red)' : 'var(--green)'}">${w.ret >= 0 ? '+' : ''}${w.ret.toFixed(2)}%</span></div>`
+      : '';
     const buys  = w.chips.b.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-b">+${x[1].toLocaleString()}</span></div>`).join('');
     const sells = w.chips.s.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-s">${x[1] < 0 ? x[1].toLocaleString() : '-' + x[1].toLocaleString()}</span></div>`).join('');
     return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}">
+      ${retLine}
       <div><div class="bc-col-title">▲ 買超前3</div>${buys}</div>
       <div><div class="bc-col-title">▼ 賣超前3</div>${sells}</div>
     </div>`;
