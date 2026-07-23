@@ -405,6 +405,46 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .sync-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 .sync-dot.online { background: var(--green); }
 .sync-dot.offline { background: var(--red); }
+
+/* ── 分點籌碼 ───────────────────────────────────────── */
+.broker-chips-toggle{cursor:pointer;font-size:.78rem;color:var(--accent2);user-select:none;display:inline-flex;align-items:center;gap:4px}
+.broker-chips-toggle:hover{text-decoration:underline}
+.broker-chips-body{display:none;margin-top:6px}
+.broker-chips-body.open{display:block}
+.bc-tabs{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
+.bc-tab{padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:var(--bg3)}
+.bc-tab:hover{border-color:var(--accent);color:var(--accent2)}
+.bc-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.bc-panel{display:none}
+.bc-panel.active{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bc-col-title{font-size:.68rem;color:var(--text2);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.bc-row{display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;border-bottom:1px solid rgba(71,85,105,.25)}
+.bc-name{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bc-val-b{color:var(--green);font-weight:600;white-space:nowrap;margin-left:6px}
+.bc-val-s{color:var(--red);font-weight:600;white-space:nowrap;margin-left:6px}
+.bc-month-table{width:100%;border-collapse:collapse;font-size:.7rem}
+.bc-month-table th{background:var(--bg3);color:var(--text2);padding:3px 6px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+.bc-month-table th:first-child{text-align:left}
+.bc-month-table td{padding:2px 6px;text-align:right;border-bottom:1px solid rgba(71,85,105,.2)}
+.bc-month-table td:first-child{text-align:left;color:var(--text)}
+.bc-month-table tr.buy-row td{color:var(--green)}
+.bc-month-table tr.buy-row td:first-child{color:var(--text)}
+.bc-month-table tr.sell-row td{color:var(--red)}
+.bc-month-table tr.sell-row td:first-child{color:var(--text)}
+/* detail row - desktop */
+.bc-detail-tr{background:rgba(15,23,42,.5)}
+.bc-detail-tr:hover{background:rgba(15,23,42,.5)!important}
+.bc-detail-tr>td{padding:0 14px 10px!important;border-top:none!important}
+/* detail row - mobile */
+@media(max-width:768px){
+  tbody tr.bc-has-detail{border-radius:12px 12px 0 0!important;margin-bottom:0!important;border-bottom:1px dashed rgba(71,85,105,.4)!important}
+  .bc-detail-tr{background:var(--card)!important;border:1px solid var(--border)!important;border-top:none!important;border-radius:0 0 12px 12px!important;margin-bottom:12px!important;padding:0 14px 10px!important}
+  .bc-detail-tr>td{display:block!important;padding:6px 0 0!important;text-align:left!important;border:none!important;justify-content:initial!important}
+  .bc-detail-tr>td::before{display:none!important}
+}
+@media(max-width:480px){
+  .bc-panel.active{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -977,7 +1017,8 @@ function renderStockTables() {
     const isIdx = s.group === 'index';
     rank++;
 
-    html += `<tr class="${isIdx ? 'index-row' : ''}">
+    const hasBc = !isIdx && !!(appData.brokerChipsMonth?.stocks?.[s.code] || appData.weeks.some(w => w.brokerChips?.[s.code]));
+    html += `<tr class="${isIdx ? 'index-row' : ''}${hasBc ? ' bc-has-detail' : ''}">
       <td data-label="#" style="text-align:center; font-weight:600; color:var(--text2)">${rank}</td>
       <td data-label="代號">
         ${isIdx
@@ -999,6 +1040,12 @@ function renderStockTables() {
         ${!isIdx ? `<button class="btn btn-sm btn-danger" onclick="removeStock('${s.code}')">刪除</button>` : ''}
       </td>` : ''}
     </tr>`;
+    if (!isIdx) {
+      const _bc = renderBrokerChips(s.code, appData.weeks, appData.brokerChipsMonth?.stocks);
+      if (_bc) {
+        html += `<tr class="bc-detail-tr"><td colspan="${isAdmin ? 10 : 9}" data-label="">${_bc}</td></tr>`;
+      }
+    }
   });
 
   html += `</tbody></table></div></div>`;
@@ -2149,6 +2196,78 @@ document.addEventListener('keydown', e => {
     document.querySelectorAll('.modal-overlay.show').forEach(el => el.classList.remove('show'));
   }
 });
+
+// ======================== 分點籌碼 ========================
+const BROKER_WEEK_LABELS = {
+  'w2026-06-22': 'W26', 'w2026-06-29': 'W27',
+  'w2026-07-06': 'W28', 'w2026-07-13': 'W29', 'w2026-07-21': 'W30'
+};
+
+function renderBrokerChips(code, weeks, monthStocks) {
+  const uid = 'bc-' + code;
+  const weekRows = weeks
+    .filter(w => w.brokerChips && w.brokerChips[code])
+    .map(w => ({ id: w.id, label: BROKER_WEEK_LABELS[w.id] || w.id, chips: w.brokerChips[code] }));
+  const monthData = monthStocks && monthStocks[code];
+  if (!weekRows.length && !monthData) return '';
+
+  const tabs = weekRows.map((w, i) =>
+    `<span class="bc-tab${i===weekRows.length-1?' active':''}" onclick="bcTab('${uid}','${w.id}')" data-wid="${w.id}">${w.label}</span>`
+  ).join('');
+  const monthTab = monthData
+    ? `<span class="bc-tab" onclick="bcTab('${uid}','month')" data-wid="month">📅 月度</span>` : '';
+
+  const weekPanels = weekRows.map((w, i) => {
+    const buys  = w.chips.b.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-b">+${x[1].toLocaleString()}</span></div>`).join('');
+    const sells = w.chips.s.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-s">${x[1] < 0 ? x[1].toLocaleString() : '-' + x[1].toLocaleString()}</span></div>`).join('');
+    return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}">
+      <div><div class="bc-col-title">▲ 買超前3</div>${buys}</div>
+      <div><div class="bc-col-title">▼ 賣超前3</div>${sells}</div>
+    </div>`;
+  }).join('');
+
+  let monthPanel = '';
+  if (monthData) {
+    const fmt = (v, net) => v == null ? '-' : (net ? (v > 0 ? '+' : '') + v.toLocaleString() : v.toLocaleString());
+    const pct  = v => v == null ? '-' : (v > 0 ? '+' : '') + v + '%';
+    const buyRows  = monthData.mb.map(r => `<tr class="buy-row"><td>${r[0]}</td><td>${fmt(r[1],true)}</td><td>${fmt(r[2])}</td><td>${fmt(r[3])}</td><td>${pct(r[4])}</td></tr>`).join('');
+    const sellRows = monthData.ms.map(r => `<tr class="sell-row"><td>${r[0]}</td><td>${fmt(r[1],true)}</td><td>${fmt(r[2])}</td><td>${fmt(r[3])}</td><td>${pct(r[4])}</td></tr>`).join('');
+    monthPanel = `<div class="bc-panel" id="${uid}-month" style="display:none;grid-template-columns:1fr">
+      <table class="bc-month-table">
+        <thead><tr><th>分點</th><th>淨張</th><th>成本</th><th>現價</th><th>報酬%</th></tr></thead>
+        <tbody>${buyRows}<tr><td colspan="5" style="padding:2px 0"></td></tr>${sellRows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  return `<span class="broker-chips-toggle" onclick="bcToggle('${uid}')"><span id="${uid}-arrow">▶</span> 分點籌碼</span>
+  <div class="broker-chips-body" id="${uid}-body">
+    <div class="bc-tabs">${tabs}${monthTab}</div>
+    ${weekPanels}${monthPanel}
+  </div>`;
+}
+
+function bcTab(uid, wid) {
+  document.querySelectorAll('.bc-tab').forEach(t => {
+    const oc = t.getAttribute('onclick') || '';
+    if (oc.startsWith(`bcTab('${uid}'`)) {
+      t.classList.toggle('active', oc === `bcTab('${uid}','${wid}')`);
+    }
+  });
+  document.querySelectorAll(`[id^="${uid}-"]`).forEach(p => {
+    if (!p.classList.contains('bc-panel')) return;
+    const show = p.id === `${uid}-${wid}`;
+    p.style.display = show ? '' : 'none';
+    show ? p.classList.add('active') : p.classList.remove('active');
+  });
+}
+
+function bcToggle(uid) {
+  const body  = document.getElementById(`${uid}-body`);
+  const arrow = document.getElementById(`${uid}-arrow`);
+  const open  = body.classList.toggle('open');
+  if (arrow) arrow.textContent = open ? '▼' : '▶';
+}
 
 // Init
 render();
