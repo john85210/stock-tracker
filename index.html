@@ -2225,15 +2225,14 @@ function renderBrokerChips(code, weeks, monthStocks) {
     ? `<span class="bc-tab" onclick="bcTab('${uid}','month')" data-wid="month">📅 月度</span>` : '';
 
   const weekPanels = weekRows.map((w, i) => {
-    const retLine = w.ret !== null
-      ? `<div style="grid-column:1/-1;font-size:11px;margin-bottom:4px;color:var(--text2)">該週報酬：<span style="font-weight:700;color:${w.ret >= 0 ? 'var(--red)' : 'var(--green)'}">${w.ret >= 0 ? '+' : ''}${w.ret.toFixed(2)}%</span></div>`
-      : '';
-    const buys  = w.chips.b.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-b">+${x[1].toLocaleString()}</span></div>`).join('');
-    const sells = w.chips.s.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-s">${x[1] < 0 ? x[1].toLocaleString() : '-' + x[1].toLocaleString()}</span></div>`).join('');
-    return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}">
-      ${retLine}
-      <div><div class="bc-col-title">▲ 買超前3</div>${buys}</div>
-      <div><div class="bc-col-title">▼ 賣超前3</div>${sells}</div>
+    const retStr = w.ret !== null ? `<span style="color:${w.ret >= 0 ? 'var(--red)' : 'var(--green)'};font-weight:700">${w.ret >= 0 ? '+' : ''}${w.ret.toFixed(2)}%</span>` : '<span>-</span>';
+    const buyRows  = w.chips.b.map(x => `<tr class="buy-row"><td>${x[0]}</td><td>+${x[1].toLocaleString()}</td><td>${retStr}</td></tr>`).join('');
+    const sellRows = w.chips.s.map(x => `<tr class="sell-row"><td>${x[0]}</td><td>${x[1] < 0 ? x[1].toLocaleString() : '-' + x[1].toLocaleString()}</td><td>${retStr}</td></tr>`).join('');
+    return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}" style="grid-template-columns:1fr">
+      <table class="bc-month-table">
+        <thead><tr><th>分點</th><th>淨張</th><th>報酬%</th></tr></thead>
+        <tbody>${buyRows}<tr><td colspan="3" style="padding:2px 0"></td></tr>${sellRows}</tbody>
+      </table>
     </div>`;
   }).join('');
 
