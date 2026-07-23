@@ -994,6 +994,57 @@ function renderStockTables() {
     </div>`;
   }
 
+  // ---- Top 5 by Return + Broker Chips ----
+  const _weekBc = endWeek.brokerChips || {};
+  const _monthStocks = appData.brokerChipsMonth?.stocks;
+  const _hasAnyBc = Object.keys(_weekBc).length > 0 || !!_monthStocks;
+
+  if (_hasAnyBc) {
+    const _top5Ret = getVisibleStocks(endWeek, 'watchlist')
+      .map(s => { const {startPrice,endPrice}=getRangePrices(s.code); return {s, ret:calcReturn(startPrice,endPrice), sp:startPrice, ep:endPrice}; })
+      .filter(x => x.ret !== null)
+      .sort((a,b)=>b.ret-a.ret)
+      .slice(0,5);
+
+    if (_top5Ret.length > 0) {
+      html += `<div class="top5-section">
+        <div class="top5-header" style="border-bottom-color:var(--accent)">
+          <span class="top5-title" style="color:var(--accent2)">&#x1f4c8; 報酬前五名（含籌碼）</span>
+        </div>
+        <div class="top5-grid">`;
+
+      _top5Ret.forEach(({s,ret,sp,ep},i)=>{
+        const wbc = _weekBc[s.code];
+        const mbc = _monthStocks?.[s.code];
+        const topBuy  = wbc?.b?.[0];
+        const topSell = wbc?.s?.[0];
+        const mBuy1   = mbc?.mb?.[0];
+        const mSell1  = mbc?.ms?.[0];
+        const chipHtml = (topBuy||topSell) ? `
+          <div style="margin-top:6px;border-top:1px dashed rgba(71,85,105,.4);padding-top:5px">
+            ${topBuy  ? `<div style="font-size:11px;color:var(--green);line-height:1.6">▲ ${topBuy[0]}&nbsp;+${topBuy[1].toLocaleString()}</div>` : ''}
+            ${topSell ? `<div style="font-size:11px;color:var(--red);line-height:1.6">▼ ${topSell[0]}&nbsp;${Math.abs(topSell[1]).toLocaleString()}</div>` : ''}
+          </div>` : (mBuy1||mSell1) ? `
+          <div style="margin-top:6px;border-top:1px dashed rgba(71,85,105,.4);padding-top:5px">
+            <div style="font-size:10px;color:var(--text2);margin-bottom:2px">月度</div>
+            ${mBuy1  ? `<div style="font-size:11px;color:var(--green);line-height:1.6">▲ ${mBuy1[0]}&nbsp;+${mBuy1[1].toLocaleString()}</div>` : ''}
+            ${mSell1 ? `<div style="font-size:11px;color:var(--red);line-height:1.6">▼ ${mSell1[0]}&nbsp;${Math.abs(mSell1[1]).toLocaleString()}</div>` : ''}
+          </div>` : '';
+
+        html += `<div class="top5-card" style="background:linear-gradient(135deg,rgba(59,130,246,.12) 0%,rgba(59,130,246,.03) 100%);border-color:rgba(59,130,246,.3)">
+          <div class="top5-rank" style="background:var(--accent)">${i+1}</div>
+          <div class="t5-code">${s.code} <span class="badge badge-${s.market}" style="font-size:10px">${s.market==='tse'?'上市':'上櫃'}</span></div>
+          <div class="t5-name">${s.name}</div>
+          <div class="t5-return ${ret>=0?'pos':'neg'}">${ret>=0?'+':''}${ret.toFixed(2)}%</div>
+          <div class="t5-prices">${sp!=null?sp.toLocaleString():'-'} → ${ep!=null?ep.toLocaleString():'-'}</div>
+          ${chipHtml}
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    }
+  }
+
   // ---- Main Stock Table ----
   html += `<div class="group-section">
     <div class="group-header">
