@@ -2225,15 +2225,28 @@ function renderBrokerChips(code, weeks, monthStocks) {
     ? `<span class="bc-tab" onclick="bcTab('${uid}','month')" data-wid="month">📅 月度</span>` : '';
 
   const weekPanels = weekRows.map((w, i) => {
-    const retStr = w.ret !== null ? `<span style="color:${w.ret >= 0 ? 'var(--red)' : 'var(--green)'};font-weight:700">${w.ret >= 0 ? '+' : ''}${w.ret.toFixed(2)}%</span>` : '<span>-</span>';
-    const buyRows  = w.chips.b.map(x => `<tr class="buy-row"><td>${x[0]}</td><td>+${x[1].toLocaleString()}</td><td>${retStr}</td></tr>`).join('');
-    const sellRows = w.chips.s.map(x => `<tr class="sell-row"><td>${x[0]}</td><td>${x[1] < 0 ? x[1].toLocaleString() : '-' + x[1].toLocaleString()}</td><td>${retStr}</td></tr>`).join('');
-    return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}" style="grid-template-columns:1fr">
-      <table class="bc-month-table">
-        <thead><tr><th>分點</th><th>淨張</th><th>報酬%</th></tr></thead>
-        <tbody>${buyRows}<tr><td colspan="3" style="padding:2px 0"></td></tr>${sellRows}</tbody>
-      </table>
-    </div>`;
+    const hasDetail = w.chips.b[0]?.length >= 4 || w.chips.s[0]?.length >= 4;
+    const pct = v => v == null ? '-' : (v > 0 ? '+' : '') + v + '%';
+    const fmt = v => v == null ? '-' : v.toLocaleString();
+    if (hasDetail) {
+      // New format: [name, net, cost, ret]
+      const buyRows  = w.chips.b.map(x => `<tr class="buy-row"><td>${x[0]}</td><td>+${fmt(x[1])}</td><td>${fmt(x[2])}</td><td>${pct(x[3])}</td></tr>`).join('');
+      const sellRows = w.chips.s.map(x => `<tr class="sell-row"><td>${x[0]}</td><td>${x[1]<0?x[1].toLocaleString():'-'+fmt(x[1])}</td><td>${fmt(x[2])}</td><td>${pct(x[3])}</td></tr>`).join('');
+      return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}" style="grid-template-columns:1fr">
+        <table class="bc-month-table">
+          <thead><tr><th>分點</th><th>淨張</th><th>成本</th><th>報酬%</th></tr></thead>
+          <tbody>${buyRows}<tr><td colspan="4" style="padding:2px 0"></td></tr>${sellRows}</tbody>
+        </table>
+      </div>`;
+    } else {
+      // Old format: [name, net]
+      const buys  = w.chips.b.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-b">+${fmt(x[1])}</span></div>`).join('');
+      const sells = w.chips.s.map(x => `<div class="bc-row"><span class="bc-name">${x[0]}</span><span class="bc-val-s">${x[1]<0?x[1].toLocaleString():'-'+fmt(x[1])}</span></div>`).join('');
+      return `<div class="bc-panel${i===weekRows.length-1?' active':''}" id="${uid}-${w.id}">
+        <div><div class="bc-col-title">▲ 買超前3</div>${buys}</div>
+        <div><div class="bc-col-title">▼ 賣超前3</div>${sells}</div>
+      </div>`;
+    }
   }).join('');
 
   let monthPanel = '';
