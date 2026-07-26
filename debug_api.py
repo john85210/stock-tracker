@@ -12,7 +12,7 @@ token = r.json()["data"]["token"]
 print("登入成功")
 
 r2 = requests.get(f"{API_BASE}/brkapi/stock-query/list",
-                  params={"symbol": "2330", "bdate": "2026-07-25", "edate": "2026-07-25"},
+                  params={"symbol": "2330", "bdate": "2026-07-24", "edate": "2026-07-24"},
                   headers={"Authorization": f"Bearer {token}"}, timeout=20)
 data = r2.json().get("data", [])
 if not data:
