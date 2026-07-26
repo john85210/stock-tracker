@@ -994,12 +994,18 @@ function renderStockTables() {
     </div>`;
   }
 
-  // ---- Split watchlist into 故事 / 其他 ----
+  // ---- Split into 故事 / 其他，大盤混入各區塊一起排序 ----
   const indexStocks = allStocks.filter(s => s.group === 'index');
   const watchlistStocks = allStocks.filter(s => s.group !== 'index');
-  // allStocks is already sorted by return desc, so filtered subsets preserve that order
-  const storyStocks = watchlistStocks.filter(s => s.targetType === '故事');
-  const otherStocks = watchlistStocks.filter(s => s.targetType !== '故事');
+
+  const sortByRet = (arr) => [...arr].sort((a, b) => {
+    const ra = calcReturn(getRangePrices(a.code).startPrice, getRangePrices(a.code).endPrice);
+    const rb = calcReturn(getRangePrices(b.code).startPrice, getRangePrices(b.code).endPrice);
+    return (rb !== null ? rb : -999) - (ra !== null ? ra : -999);
+  });
+
+  const storySection = sortByRet([...watchlistStocks.filter(s => s.targetType === '故事'), ...indexStocks]);
+  const otherSection = sortByRet([...watchlistStocks.filter(s => s.targetType !== '故事'), ...indexStocks]);
 
   const colCount = isAdmin ? 10 : 9;
   const tableHeader = `<thead><tr>
@@ -1011,55 +1017,43 @@ function renderStockTables() {
         ${isAdmin ? '<th>操作</th>' : ''}
       </tr></thead>`;
 
-  const buildIndexRows = () => indexStocks.map(s => {
-    const { startPrice, endPrice } = getRangePrices(s.code);
-    const ret = calcReturn(startPrice, endPrice);
-    return `<tr class="index-row">
-      <td data-label="#" style="text-align:center; font-size:11px; color:var(--gold)">大盤</td>
-      <td data-label="標的類型"></td>
-      <td data-label="代號"><span class="code" style="color:var(--gold)">&#x1f3e6;</span></td>
-      <td data-label="標的"><span style="color:var(--gold); font-weight:700">${s.name}</span></td>
-      <td data-label="推薦人" class="recommender"></td>
-      <td data-label="報牌時間" class="report-date"></td>
-      <td data-label="選擇原因" class="reason"></td>
-      <td data-label="${startDateLabel} 開盤" class="price">${startPrice != null ? startPrice.toLocaleString() : '-'}</td>
-      <td data-label="${endDateLabel} 收盤" class="price">${endPrice != null ? endPrice.toLocaleString() : '-'}</td>
-      <td data-label="${returnLabel}" class="return-cell ${ret !== null ? (ret >= 0 ? 'pos' : 'neg') : ''}">
-        ${ret !== null ? (ret >= 0 ? '+' : '') + ret.toFixed(2) + '%' : '-'}
-      </td>
-      ${isAdmin ? `<td data-label="操作" class="action-cell"></td>` : ''}
-    </tr>`;
-  }).join('');
-
   const buildStockRows = (stocks) => {
     let rows = '';
     let rank = 0;
     stocks.forEach(s => {
+      const isIdx = s.group === 'index';
       const { startPrice, endPrice } = getRangePrices(s.code);
       const ret = calcReturn(startPrice, endPrice);
-      rank++;
-      const hasBc = !!(appData.brokerChipsMonth?.stocks?.[s.code] || appData.weeks.some(w => w.brokerChips?.[s.code]));
-      rows += `<tr class="${hasBc ? 'bc-has-detail' : ''}">
-        <td data-label="#" style="text-align:center; font-weight:600; color:var(--text2)">${rank}</td>
-        <td data-label="標的類型" style="font-size:12px; color:var(--text2); ${isAdmin ? 'cursor:pointer;' : ''}" ${isAdmin ? `onclick="editTargetType(this,'${s.code}')" title="點擊編輯"` : ''}>${s.targetType || '-'}</td>
-        <td data-label="代號"><span class="code">${s.code}</span> <span class="badge badge-${s.market}">${s.market === 'tse' ? '上市' : '上櫃'}</span></td>
-        <td data-label="標的" class="name">${s.name}</td>
-        <td data-label="推薦人" class="recommender">${s.recommender || '-'}</td>
-        <td data-label="報牌時間" class="report-date">${s.reportDate || '-'}</td>
-        <td data-label="選擇原因" class="reason">${s.reason}</td>
+      if (!isIdx) rank++;
+      const hasBc = !isIdx && !!(appData.brokerChipsMonth?.stocks?.[s.code] || appData.weeks.some(w => w.brokerChips?.[s.code]));
+      rows += `<tr class="${isIdx ? 'index-row' : ''}${hasBc ? ' bc-has-detail' : ''}">
+        <td data-label="#" style="text-align:center; ${isIdx ? 'font-size:11px; color:var(--gold)' : 'font-weight:600; color:var(--text2)'}">
+          ${isIdx ? '大盤' : rank}
+        </td>
+        <td data-label="標的類型" style="font-size:12px; color:var(--text2); ${!isIdx && isAdmin ? 'cursor:pointer;' : ''}" ${!isIdx && isAdmin ? `onclick="editTargetType(this,'${s.code}')" title="點擊編輯"` : ''}>${isIdx ? '' : (s.targetType || '-')}</td>
+        <td data-label="代號">${isIdx
+          ? `<span class="code" style="color:var(--gold)">&#x1f3e6;</span>`
+          : `<span class="code">${s.code}</span> <span class="badge badge-${s.market}">${s.market === 'tse' ? '上市' : '上櫃'}</span>`
+        }</td>
+        <td data-label="標的" class="name">${isIdx ? `<span style="color:var(--gold); font-weight:700">${s.name}</span>` : s.name}</td>
+        <td data-label="推薦人" class="recommender">${isIdx ? '' : (s.recommender || '-')}</td>
+        <td data-label="報牌時間" class="report-date">${isIdx ? '' : (s.reportDate || '-')}</td>
+        <td data-label="選擇原因" class="reason">${isIdx ? '' : s.reason}</td>
         <td data-label="${startDateLabel} 開盤" class="price">${startPrice != null ? startPrice.toLocaleString() : '-'}</td>
         <td data-label="${endDateLabel} 收盤" class="price">${endPrice != null ? endPrice.toLocaleString() : '-'}</td>
         <td data-label="${returnLabel}" class="return-cell ${ret !== null ? (ret >= 0 ? 'pos' : 'neg') : ''}">
           ${ret !== null ? (ret >= 0 ? '+' : '') + ret.toFixed(2) + '%' : '-'}
         </td>
-        ${isAdmin ? `<td data-label="操作" class="action-cell">
+        ${isAdmin ? `<td data-label="操作" class="action-cell">${isIdx ? '' : `
           <button class="btn btn-sm" onclick="showEditPrice('${s.code}','${s.name}')">編輯</button>
-          <button class="btn btn-sm btn-danger" onclick="removeStock('${s.code}')">刪除</button>
+          <button class="btn btn-sm btn-danger" onclick="removeStock('${s.code}')">刪除</button>`}
         </td>` : ''}
       </tr>`;
-      const _bc = renderBrokerChips(s.code, appData.weeks, appData.brokerChipsMonth?.stocks);
-      if (_bc) {
-        rows += `<tr class="bc-detail-tr"><td colspan="${colCount}" data-label="">${_bc}</td></tr>`;
+      if (!isIdx) {
+        const _bc = renderBrokerChips(s.code, appData.weeks, appData.brokerChipsMonth?.stocks);
+        if (_bc) {
+          rows += `<tr class="bc-detail-tr"><td colspan="${colCount}" data-label="">${_bc}</td></tr>`;
+        }
       }
     });
     return rows;
@@ -1072,8 +1066,7 @@ function renderStockTables() {
       ${isAdmin ? `<button class="btn btn-sm admin-only" onclick="showAddStockModal('watchlist')">+ 新增股票</button>` : ''}
     </div>
     <div class="table-wrap"><table>${tableHeader}<tbody>
-      ${buildIndexRows()}
-      ${buildStockRows(storyStocks)}
+      ${buildStockRows(storySection)}
     </tbody></table></div></div>`;
 
   // ---- Section 2: 其他（業績 / 傳聞 / 籌碼 / 未分類） ----
@@ -1082,8 +1075,7 @@ function renderStockTables() {
       <span class="group-title">&#x1f4ca; 其他標的（業績 / 傳聞 / 籌碼）</span>
     </div>
     <div class="table-wrap"><table>${tableHeader}<tbody>
-      ${buildIndexRows()}
-      ${buildStockRows(otherStocks)}
+      ${buildStockRows(otherSection)}
     </tbody></table></div></div>`;
 
   if (isAdmin) {
