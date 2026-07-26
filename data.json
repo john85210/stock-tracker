@@ -28,7 +28,7 @@
       "name": "頎邦",
       "group": "watchlist",
       "market": "otc",
-      "reason": "對驅動IC客戶漲價，且有接到Marvell的訂單跨入矽光封裝，TIA for MRVL；PD for Macon。四月開始路演，積極跟投資法人溝通。",
+      "reason": "（1）有過Lite驗證\r\n（2）hyperlight有下訂單，看起來長線會更好",
       "recommender": "Jack 鄭",
       "targetType": "故事"
     },
@@ -45,7 +45,7 @@
       "name": "聯茂",
       "group": "watchlist",
       "market": "tse",
-      "reason": "因華通低軌缺CCL，2383/6274產能給AI，因此華通開始驗證聯茂，進而打入低軌衛星業務，且未來會漲價",
+      "reason": "（1）營收陸續開出來，聯茂落後補漲會有表現\r\n（2）缺貨有解決了，有booking到產能",
       "recommender": "archy",
       "reportDate": "2026/7/5",
       "targetType": "漲價"
@@ -55,7 +55,7 @@
       "name": "正文",
       "group": "watchlist",
       "market": "tse",
-      "reason": "作多態度明確，但可以等營收開出，上半年營收差；威世波六月多上興櫃，做到100塊以上；正文會去談800g模塊代工",
+      "reason": "子公司威世波要上市，可能會藉此炒作正文股價",
       "recommender": "光哥",
       "reportDate": "2026/6/24",
       "targetType": "籌碼"
@@ -65,7 +65,7 @@
       "name": "雍智",
       "group": "watchlist",
       "market": "otc",
-      "reason": "聯發科TPU訂單",
+      "reason": "formfactor財報不錯，有機會帶動雍智，雍智的probe head是搭配formfactor的",
       "recommender": "Kevin",
       "targetType": "業績"
     },
@@ -74,7 +74,7 @@
       "name": "南亞",
       "group": "watchlist",
       "market": "tse",
-      "reason": "漲價+缺E glass",
+      "reason": "（1）m7-M10驗證中\r\n（2）有外資籌碼要進入\r\n（3）eglass持續漲價",
       "recommender": "archy",
       "reportDate": "2026/7/5",
       "targetType": "籌碼"
@@ -155,7 +155,7 @@
       "name": "訊芯",
       "group": "watchlist",
       "market": "tse",
-      "reason": "AVGO CPO封測/Molex 800g,1.6T，客戶涵蓋四大CSP；波若威找上訊芯合作",
+      "reason": "（1）明年一月開始有30-50k左右的spectrum 6 CPO、二月份開始400-500k的nvlink相關訂單\r\n（2）avgo準備放量，訊芯八月會有資本支出擴大，之後要擴大到cow\r\n（2）NV有在跟訊芯評估這個技術，使用的設備都是找die bond的公司，目前是找MRSI瑞典公司。台灣是惠冠科技公司代理，台灣沒有上市櫃的標的可以買。矽品也有導入MRSI的設備做被動耦合\r\n（3）有做新的案子，被動耦合相關，不需要做六軸定位、對光等很需要uph很花時間的前置作業。如何達成對位動作？做機械式的對位，直接卡上去\r\n（4）今年賺3-5，明年好的話會到30塊，主要是看meta 16-17塊，加上molex，以及nv明年會出一點\r\n（5）明年avgo cpo預計10-15萬台，一台16顆-18顆OE，乘起來2.4m左右。cpo一台代工價3000多美金，12萬台就110億。鴻海明年會主推訊芯",
       "recommender": "Archy",
       "targetType": "故事"
     },
@@ -164,7 +164,7 @@
       "name": "印能",
       "group": "watchlist",
       "market": "otc",
-      "reason": "有機會與3131比價，印能今明年EPS都將超過弘塑，且毛利率優於弘塑",
+      "reason": "（1）矽品當初有買cow的烤箱做驗證，矽品明年決定cow要開始買印能的烤箱，是新的維度的事業\r\n（2）現在有在幫NV的metal tim做trouble shooting，上個禮拜印能已經接洽到工程人員，近期就會送樣，看設備能處理的怎麼樣。T公司的SoIC也有蠻不錯的進展，現在下訂單的爐子編號已經到十幾號了，這塊還是持續有切入\r\n（3）欣興電子的substrate的生意，後面是emib的案子。今年兩台，一台6000萬\r\n（4）一個月標準做30台，現在做到一個月50台。還有一些地可以擴到80-90台",
       "recommender": "Jack Lu",
       "targetType": "故事"
     },
@@ -197,7 +197,7 @@
       "name": "創意",
       "group": "watchlist",
       "market": "tse",
-      "reason": "\"（1）AI 5 Tape out\n（2）第一季獲利有機會是同期心高，NRE營收16億\"",
+      "reason": "（1）地平線明年15萬片。保守估計1500億包含google/msft/地平線\r\n（2）有接到大顆meta 的asic專案",
       "recommender": "kevin/Daivd",
       "reportDate": "2026/6/16",
       "targetType": "業績"
@@ -264,7 +264,7 @@
       "name": "愛普",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）產能擴張時程： 2026 年自 Q1 的 3K 逐季拉升，至 Q4 達 10K；2027 年預計月均產能跳升至 15K（年產 18 萬片）。\r\n（2）營收貢獻： 以單價 4,000 美元計算，2027 年 INP 貢獻營收約 216 億元，對比 2025 年 57 億元的總營收，成長將近 4 倍。\r\n（3）需求驗證： 參考 Broadcom (AVGO) TPU 需求，若 2027 年出貨 400 萬顆、每片晶圓切 20 顆計算，光 TPU 就需 20 萬片產能。加計 TH5/6 交換器需求，愛普規劃的 18 萬片產能具高度合理性。\r\n（4）interposer放量，之前再psmc做，出給avgo，現在聯電加進來，產能會比現在多7x，光這塊明年就20塊、IPD consumer使用，聯發科之後旗艦手機會用。ASIC之後會講是哪一顆，明年會貢獻5-10塊",
+      "reason": "（1）產能擴張時程： 2026 年自 Q1 的 3K 逐季拉升，至 Q4 達 10K；2027 年預計月均產能跳升至 15K（年產 18 萬片）。\r\n（2）營收貢獻： 以單價 4,000 美元計算，2027 年 INP 貢獻營收約 216 億元，對比 2025 年 57 億元的總營收，成長將近 4 倍。\r\n（3）需求驗證： 參考 Broadcom (AVGO) TPU 需求，若 2027 年出貨 400 萬顆、每片晶圓切 20 顆計算，光 TPU 就需 20 萬片產能。加計 TH5/6 交換器需求，愛普規劃的 18 萬片產能具高度合理性。\r\n（4）interposer放量，之前再psmc做，出給avgo，現在聯電加進來，產能會比現在多7x，光這塊明年就20塊、IPD consumer使用，聯發科之後旗艦手機會用。ASIC之後會講是哪一顆，明年會貢獻5-10塊\r\n（5）愛普IPC/IPD/VHM NRE加一加明年40塊",
       "recommender": "David",
       "addedWeekStart": "2026-04-13",
       "targetType": "故事"
@@ -274,7 +274,7 @@
       "name": "聯發科",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）TPU投片量優於市場預期\r\n（2）ECO問題解決",
+      "reason": "（1）5921明年多10%，18萬片加到20萬片\r\n（2）Q3業績會跟Q2差不多，因為有Pull in的關係加上漲價。Q4業績就會上去",
       "recommender": "Jack Lu",
       "addedWeekStart": "2026-04-13",
       "targetType": "業績"
@@ -320,7 +320,7 @@
       "name": "睿生光電",
       "group": "watchlist",
       "market": "tse",
-      "reason": "會再從市場買10%股份",
+      "reason": "（1）從台積電內部傳出來，說今年EPS有機會8-10，一二季差不多，第三季會有x光檢測，用在水冷式系統內部管線的偵測，第三季每個月有機會1-1.2塊，三四季每季大概3塊以上\r\n（2）後面有個故事比較大，台積說aoi只能檢測表面，現在要用axi替代。銳生光電說要跟國際大場合作開發關鍵零組件，開發之後會賣給倍利科、由田之類的。明年看20以上\r\n（3）用x光檢測，能量控制很重要，怕會傷到電容之類的，再看要怎麼調整",
       "recommender": "志鴻",
       "addedWeekStart": "2026-04-13",
       "targetType": "故事"
@@ -330,7 +330,7 @@
       "name": "致茂",
       "group": "watchlist",
       "market": "tse",
-      "reason": "SLT那邊google、amd都有下，60台，SLT營收本來是80e會上修到100-120億",
+      "reason": "amd cpu很多，現在venice SLT會讓致茂做。之前AMD是跟新加坡廠商買設備但他們做不好，訂單轉給致茂",
       "recommender": "Cliff",
       "addedWeekStart": "2026-04-13",
       "reportDate": "2026/7/24",
@@ -350,7 +350,7 @@
       "name": "一詮",
       "group": "watchlist",
       "market": "tse",
-      "reason": "能做到半導體等級只有健策一詮，現在換二代比較扎實。rubin開始出貨，應該要往先前的故事邁進，後面還會發cb，會拉高",
+      "reason": "（1）6/20左右CB，擴給新應用。cpu/gpu配比提升，arm也進入ai agent的時代\r\n（2）當初101傳vera掉單，但有跟業界的確認，vera還在測，原本主力是健策沒錯，但後面到下半年一個月要出300萬的vera，健策沒辦法供應，要找二供。",
       "recommender": "Archy",
       "addedWeekStart": "2026-04-13",
       "reportDate": "2026/6/2",
@@ -388,7 +388,7 @@
       "name": "新唐",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）今年轉虧為贏，BMC那塊聽到msft general server會打進去\r\n（2）除了general server之外，asic也有進展，tpu v6",
+      "reason": "（1）本來日本子公司foundry業務不是很順，松下跟tower有協議，8吋跟12吋產能各用各的，新唐用49%tower用51%，不過這部分有解決了，可以對外接單，對業績有正面影響\r\n（2）MCU會漲價\r\n（3）信驊的barrier是軟體，不過現在如果進入openBMC新唐有機會打破這個障礙\r\n（4）CSP客戶有google，之後有msft\r\n（5）新唐現在有鎖定要切nv主機板\r\n（6）新唐bmc目前用28nm，12nm今年年底會tapeout，研發團隊在以色列，研發人員有200位，不只做bmc還有做ai相關的產品",
       "recommender": "志鴻",
       "addedWeekStart": "2026-04-13",
       "reportDate": "2026/7/5",
@@ -399,7 +399,7 @@
       "name": "柏承",
       "group": "watchlist",
       "market": "tse",
-      "reason": "做msap，以前做小米，現在光通focus陸場光模塊，隨便做到一間小家的，都比台灣大",
+      "reason": "（1）消息面，開股東會，有大概講一些光模組的客戶，AAOI最快，大陸場今年要增資，台灣場今年要減資，要把淨值拉到8塊\r\n（2）第三季底第四季開始會有量產的單子\r\n（3）mSAP產能1/3做手機，另外2/3留給光通（一半AAOI，另一半給驗證中的例如天孚旭創光訊）\r\n（4）欣興有丟案子給柏承做bt載板",
       "recommender": "tio",
       "addedWeekStart": "2026-04-13",
       "reportDate": "2026/6/26",
@@ -419,7 +419,7 @@
       "name": "聯電",
       "group": "watchlist",
       "market": "tse",
-      "reason": "中際旭創pic再那邊投，已經做了2季了。pic會做的： 做光模組的廠商、專門做PIC的廠商也會開（幫aws/csp廠有在設計高階光模組的會幫忙開），有很大一部分投在聯電新加坡場",
+      "reason": "（1）法說會講矽光子、8/12吋狀況都不錯。會提及SNDK HBF/NAND、PMIC加單、Sony ISP\r\n（2）現在在談的案子，目前有15-20個，態度明確，客人要consign設備，要準備把8a廠全部轉成做cpo，毛利要到70-80%才要做。現在台積矽光子的gm也是到70-80%\r\n（3）中際旭創pic再那邊投，已經做了2季了。pic會做的： 做光模組的廠商、專門做PIC的廠商也會開（幫aws/csp廠有在設計高階光模組的會幫忙開），有很大一部分投在聯電新加坡場\r\n（4）7月生效第一波漲價，第二波漲價10月公告明年1月漲價，大客戶漲價10%小客人30%。\r\n（5） hyper light今年三月份每個月投片50片，六月份變成每個月500片，九月份每個月5000片。\r\n（6）Intel合作：3nm/5nm，客戶先從聯發科開始，2032量產。12nm是明年q4開始也是聯發科的東西\r\n（7）明年會擴產矽光，把mosfet產能轉過去，明年會在多2-3w片產能一個月。光通8/12吋都是簽長約",
       "recommender": "Jack 鄭/Archy",
       "addedWeekStart": "2026-04-13",
       "targetType": "故事"
@@ -429,7 +429,7 @@
       "name": "大立光",
       "group": "watchlist",
       "market": "tse",
-      "reason": "出稜鏡 \r\n6789出metalen 合聖組裝成fau再供貨給台積nv\r\n在群創測試\r\n大立光7玉晶光3，AMD的部分",
+      "reason": "客戶有康寧、波若威\r\n三個月後會有自動化產線\r\n現在只能做FA，不能做FAU，但後續還是會往FAU做",
       "recommender": "Zack",
       "addedWeekStart": "2026-04-13",
       "reportDate": "2026/6/14",
@@ -476,7 +476,7 @@
       "name": "盟立",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）四月中有新聞跟敏實集團有策略合作，盟立子公司盟英做諧波減速器的，有送樣特斯拉，盟英是第一個過的，在盟立集團是可以看的題材。加上特斯拉有要求供應鏈要有完整的體系工廠，除了再中國之外要有其他國家要有工廠，而盟立跟敏實合作就有這樣的優勢\r\n（2）加上欣興的單子有給盟立，有去了解，因為abf端擴廠，一場二場的設備有用到，拉不少盟立的設備，新的楊梅場在洽談中，日月光投空，新場會用盟立的天車系統\r\n（3）第一階段過三位數，第二階段對標迅得。最後目標對標上銀",
+      "reason": "在手訂單100億，除了機器人無塵室的天車訂單，臻鼎也有下自動化設備給盟立，公司也積極發CB/現增。公司想壓在150以下，但公司最近等不及，要先發CB，現增沒這麼快",
       "recommender": "Kevin/Jeff",
       "addedWeekStart": "2026-04-27",
       "targetType": "業績"
@@ -486,7 +486,7 @@
       "name": "力成",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）最近有聽到本業生意很好，比如說現在在amd的案子，目前amd的flip chip bga在力成快要驗證完了，是有量的，現在最大的限制是機台跟設備廠房，後面要看董事長dk怎麼調派這些資源\r\n（2）amd還有mi系列的產品會跟著進來，已經提供9m美金作為押金。等於排擠ti在力成這邊的生意\r\n（3）美光有收到nv的記憶體訂單，做不來，放到力成去做。目前在竹科二場跑",
+      "reason": "（1）接下來5-10年跟avgo高度綁定，接續從日本凸版的玻璃基板到我們這邊\r\n（2）本業生意很好，比如說現在在amd的案子，目前amd的flip chip bga在力成快要驗證完了，是有量的，現在最大的限制是機台跟設備廠房，後面要看董事長dk怎麼調派這些資源\r\n（3）美光有收到nv的記憶體訂單，做不來，放到力成去做。目前在竹科二場跑\r\n（4）買了兩塊廠房再翻新，第一台是510的設備，年底會有三台ready，正在大動作擴廠\r\n（5）amd還有mi系列的產品會跟著進來，已經提供9m美金作為押金。等於排擠ti在力成這邊的生意\r\n（6）未來想朝向FAU做\r\n（7）玻璃基板再日本凸版做第一階段的製作，然後由力成接手，做很細的繞線，去取代interposer，來到RDL等級的繞線，例如XPU/switch/CPO",
       "recommender": "Zack",
       "addedWeekStart": "2026-04-27",
       "targetType": "故事"
@@ -514,7 +514,7 @@
       "name": "新代",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）確定變成兩班制，訂單滿到做不出來 \r\n（2）有跟大陸華研（機器人）、聯達有合作，一萬台的訂單，明年會到130",
+      "reason": "（1）Q3淡季不淡，YoY有機會120%，營收預計70億，Q4到85億。富邦人壽已經買了1300張，還會再買500-700張，會買在2300以下\r\n（2）2027可以達到年營收350億",
       "recommender": "志鴻",
       "addedWeekStart": "2026-04-27",
       "reportDate": "2026/7/12",
@@ -525,7 +525,7 @@
       "name": "東捷",
       "group": "watchlist",
       "market": "otc",
-      "reason": "（1）TGV方案，其他家有陸陸續續再做這塊，例如鈦昇等。日本topan、大日本印刷是其他聯盟也有做tgv。最一開始要讓玻璃改質，之後才能做蝕刻鑽孔。topan有跟東捷下單了，五月東捷有要出貨，如果量大的話有機會\r\n（2）公司自己看200\r\n（3）基板場的glass core/osat的foplp/台積電copos，這三個東捷都有出機台。",
+      "reason": "（1）聯發科、微軟、友達三家合作。micro led CPO的案子，第一個案子比較不會有量，poc。第二代已經再設計了，2028會量產\r\n（2）有Micro led巨量轉移結合設備、巨量修補、單顆修補技術，若未來micro led跨到CPO有機會承接這一波需求，尤其巨量轉移\r\n（3）三年三段故事，第一段是今年出給力成或是日月光的FOPLP，PTI追加的機台六月底有進機。會在7/8月營收貢獻，且接下來幾個月的產能都是滿載的；第二斷事glass core的substrate；第三段是wide and slow友達micro led的CPO，今年下半年進入demo\r\n（4）今年2-4/明年8-10\r\n（5）TGV最快就是群創，目前是用國外的設備，2024年底就有新聞說東捷跟群創工研院合作高深寬比的技術，群創跟凸版也有開規格。東捷最快的機種會在九月semicon展出",
       "recommender": "david",
       "addedWeekStart": "2026-04-27",
       "reportDate": "2026/6/21",
@@ -636,7 +636,7 @@
       "name": "由田",
       "group": "watchlist",
       "market": "otc",
-      "reason": "（1）一台500-600k usd，拉貨數量有數十台或三位數。從oe數量回推的話，今年會有150台，明年會再往上。\r\n（2）出貨要回到t公司要繼續做cpo，會是必經的站點",
+      "reason": "（1）今年下半到明年上半年有70台訂單，一台100萬美金，\r\n（2）今年6明年15-20",
       "recommender": "Jack 鄭",
       "addedWeekStart": "2026-04-20",
       "reportDate": "2026/6/14",
@@ -656,7 +656,7 @@
       "name": "臻鼎",
       "group": "watchlist",
       "market": "tse",
-      "reason": "vr rubin compute tray/tr3 ubb/msap光通板子，有sellside估明年30，還有空間",
+      "reason": "（1）市場傳做壞100w片。但今年rubin 200w顆，只要100w張strata，臻鼎又只有5-10%，只有要出5-10w張\r\n（2）inline發現的，根本還沒出到nv，有擋下來",
       "recommender": "Jeff",
       "addedWeekStart": "2026-04-20",
       "reportDate": "2026/7/24",
@@ -685,7 +685,7 @@
       "name": "精材",
       "group": "watchlist",
       "market": "otc",
-      "reason": "（1）台積會在搬600台chip probing測試機台\r\n（2）短期下一個會搬過去的是amd cpu測試機台\r\n（3）收相關的處理費用",
+      "reason": "（1）手上有1000台，會在多400台。測試的產品組合有改變，之前以蘋果訂單優先，現在有多一些edge ai相關的ic。測試的產品會多元化，不會受到淡旺季的改變。以前台積內部滿了才會丟出去\r\n（2）mi500今年第四季，穩壓製程，一片單價2500美金\r\n（3）設備廠商被精材抓去booking未來產能，希望能比ap5的產能多5倍，ap5大概1-2萬片\r\n（4）IVR的部分 年底一個月3-400片小量生產，明年六月會到1500片一個月",
       "recommender": "志鴻/Jack鄭",
       "addedWeekStart": "2026-05-04",
       "targetType": "故事"
@@ -731,7 +731,7 @@
       "name": "鼎元",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）有開始做100g/200g PD，還在確認有沒有送樣\r\n（2）有跟聯亞對過，確實有epi給鼎元作，應該是lite的單，給鼎元做代工切割，跟穩懋博通很像",
+      "reason": "光mpd就2.5-3.5塊，lite都沒還算。google要求lite出LD的同時也要出PD，因為只有LD然後沒有PD沒用，所以lite開始找人幫忙做，epi找聯亞pd找鼎元",
       "recommender": "Tio",
       "addedWeekStart": "2026-05-04",
       "targetType": "故事"
@@ -768,7 +768,7 @@
       "name": "聯鈞",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）源傑要掛牌\r\n（2）昨天開業績有比預期高，本來預期8\r\n（3）第一季EPS 0.7多\r\n（4）COS之前缺基板、LD，cohr跟lite一個月現在大概做2kk，產能利用率50%。這個月會拉到2.5-3kk，後面就看材料狀況\r\n（5）400g aoc有接到新訂單，150-200k之間，從整個排成來看上個月出1x K，接下來幾個月都要出50k左右\r\n（6）這個月或是下個月會創歷史新高，比較有把握是下個月一定會，這個月不確定",
+      "reason": "（1）源傑要掛牌\r\n（2）本來一直都有Lite/Cohr的COC， COS去年年底到今年年初產能要建到4kk/月，確實有建起來，但一下缺laser，一下缺submount，後來又有改機的問題。目前改機完成了，但是雷射還是有缺，不過比之前好，稼動率可以拉到60-70%。COS到年底要擴到8kk。如果多4kk滿載可以多10塊錢，明年可以做到20多塊\r\n（3）這週有確認到oracle的訂單有回來，有接近200k的訂單，這個月出3x K，下個月50K以上\r\n（4）這個月營收會比上個月多7-8000w\r\n（5）ELSFP：跟推前鼎一樣的概念，只是客戶不太一樣，去年十月份的時候樣品有做好也有送樣，但送給誰還不確定。有問內部人有沒有採購ELSFP的東西，目前問起來還沒，頂多送樣測試。\r\n（6）如果之後都正常出貨，今年可以做10幾塊，不過20應該有困難。今年看10出頭。如果源傑的股票公司多釋出一點，也許今年有20\r\n（7）之後可能有外資要發報告",
       "recommender": "Tio",
       "addedWeekStart": "2026-05-04",
       "targetType": "故事"
@@ -805,7 +805,7 @@
       "name": "健策",
       "group": "watchlist",
       "market": "tse",
-      "reason": "回檔夠多",
+      "reason": "（1）健策MCL出來之後 後年300-400\r\n（2）rubin還是加價的價格，8月會變50\r\n（3）mi450確定是兩片\r\n（4）現在開始每個月營收會創歷史高\r\n（5）明年第一季rubin ultra cowos wafer out",
       "recommender": "Cliff/David",
       "addedWeekStart": "2026-05-04",
       "targetType": "業績"
@@ -871,7 +871,7 @@
       "name": "達發",
       "group": "watchlist",
       "market": "tse",
-      "reason": "聯發科集團的個股通常第四季會做股價",
+      "reason": "（1）dsp狀況不錯，aoc出給聯鈞，本來上半年都沒貨一直到下半年有300k條，等於去年的出貨量。聯鈞在aoc佔比1/3營業額\r\n（2）DSP因為需求有上來，主要是中國的，投片12吋。今年有1000-2000片，想要要到3000片，明年往2-3倍去要，但台積應該不會給這麼多。但如果真的有這麼多，明年dsp可以貢獻達發10元",
       "recommender": "小新",
       "addedWeekStart": "2026-05-11",
       "reportDate": "2026/7/5",
@@ -1055,7 +1055,7 @@
       "name": "順達",
       "group": "watchlist",
       "market": "otc",
-      "reason": "（1）下半年到明年狀況好\r\n（2）外面喊800",
+      "reason": "（1）跟台達關係close，客戶是aws/meta，這邊進展速度快\r\n（2）側面了解，第四季跟明年的業績成長動能會很強，剛好花旗開第一槍\r\n（3）今年15明年25，市場有人喊到40塊",
       "recommender": "jack lu",
       "reportDate": "2026/7/9",
       "addedWeekStart": "2026-06-01",
@@ -1552,7 +1552,10 @@
         "9136",
         "8091"
       ],
-      "topVotes": []
+      "topVotes": [
+        "6147",
+        "2303"
+      ]
     },
     {
       "id": "w2026-07-13",
@@ -13509,7 +13512,7 @@
       ]
     }
   ],
-  "lastModified": 1785065138755,
+  "lastModified": 1785078070208,
   "brokerChipsMonth": {
     "period": "2026-06-23/2026-07-23",
     "stocks": {
