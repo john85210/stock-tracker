@@ -1003,7 +1003,7 @@ function renderStockTables() {
     <div class="table-wrap"><table>
       <thead><tr>
         <th style="width:40px">#</th>
-        <th>代號</th><th>標的</th><th>推薦人</th><th>報牌時間</th><th>選擇原因</th>
+        <th>標的類型</th><th>代號</th><th>標的</th><th>推薦人</th><th>報牌時間</th><th>選擇原因</th>
         <th style="text-align:right">${startDateLabel} 開盤</th>
         <th style="text-align:right">${endDateLabel} 收盤</th>
         <th style="text-align:right">${returnLabel}</th>
@@ -1020,6 +1020,7 @@ function renderStockTables() {
     const hasBc = !isIdx && !!(appData.brokerChipsMonth?.stocks?.[s.code] || appData.weeks.some(w => w.brokerChips?.[s.code]));
     html += `<tr class="${isIdx ? 'index-row' : ''}${hasBc ? ' bc-has-detail' : ''}">
       <td data-label="#" style="text-align:center; font-weight:600; color:var(--text2)">${rank}</td>
+      <td data-label="標的類型" style="font-size:12px; color:var(--text2)">${s.targetType || '-'}</td>
       <td data-label="代號">
         ${isIdx
           ? `<span class="code" style="color:var(--gold)">&#x1f3e6;</span>`
