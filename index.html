@@ -2435,15 +2435,25 @@ async function showChipsModal(code, name) {
     document.getElementById('chipsModalBody').innerHTML = '<div class="chips-loading"><span class="fetch-spinner"></span>&nbsp;載入每日籌碼資料中...</div>';
     dailyChipsLoaded = true;
     try {
-      const resp = await fetch('daily_chips.json');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch('daily_chips.json', { signal: controller.signal });
+      clearTimeout(timer);
       if (!resp.ok) throw new Error('not found');
       dailyChipsData = await resp.json();
     } catch(e) {
+      console.warn('daily_chips.json 載入失敗:', e.message);
       dailyChipsData = null;
     }
   }
 
-  renderChipsModal();
+  try {
+    renderChipsModal();
+  } catch(e) {
+    console.error('renderChipsModal 失敗:', e);
+    document.getElementById('chipsModalBody').innerHTML =
+      `<div class="chips-no-data">資料渲染失敗：${e.message}</div>`;
+  }
 }
 
 function closeChipsModal() {
