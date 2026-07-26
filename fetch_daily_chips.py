@@ -78,11 +78,12 @@ def fetch_brokers(token: str, code: str, date_str: str) -> list:
 
 def process_day(brokers: list, target_date: str) -> dict:
     """
-    從 broker 列表中提取 target_date 當天的買超/賣超資料。
-    回傳 {"b": [[name, net, cost], ...], "s": [[name, net, cost], ...]}
+    從 broker 列表中提取 target_date 當天的買超/賣超資料與收盤價。
+    回傳 {"price": 123.0, "b": [[name, net, cost], ...], "s": [[name, net, cost], ...]}
     """
     date_nodash = target_date.replace("-", "")   # "20260725"
     aggregated: dict[str, dict] = {}
+    price = float(brokers[0].get("price")) if brokers and brokers[0].get("price") else None
 
     for broker in brokers:
         name = broker.get("branchName", "").strip()
@@ -102,7 +103,6 @@ def process_day(brokers: list, target_date: str) -> dict:
                 continue
 
             net = t.get("netSheets", 0)
-            # 成本在 broker 層級的 cost 欄位
             cost = broker.get("cost") or 0
             try:
                 net  = int(net)
@@ -128,7 +128,10 @@ def process_day(brokers: list, target_date: str) -> dict:
     buyers  = sorted([r for r in rows if r[1] > 0], key=lambda x: -x[1])[:TOP_N]
     sellers = sorted([r for r in rows if r[1] < 0], key=lambda x:  x[1])[:TOP_N]
 
-    return {"b": buyers, "s": sellers}
+    result = {"b": buyers, "s": sellers}
+    if price is not None:
+        result["price"] = price
+    return result
 
 
 def prune_old(daily: dict, keep_days: int = KEEP_DAYS) -> dict:
