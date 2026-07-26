@@ -880,6 +880,17 @@ function calcReturn(startPrice, endPrice) {
   return null;
 }
 
+// 取最近一筆有效收盤價：週五優先，若無則週一，再往前找
+function getLatestPrice(code) {
+  const weeks = [...appData.weeks].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+  for (const w of weeks) {
+    const p = (w.prices || {})[code] || {};
+    if (p.fri != null) return p.fri;
+    if (p.mon != null) return p.mon;
+  }
+  return null;
+}
+
 function setRange(n) {
   selectedRange = n;
   const needed = currentWeekIdx + n;
@@ -2463,16 +2474,17 @@ function renderChipsModal() {
   const startDate = document.getElementById('chipsStartDate').value;
   const endDate = document.getElementById('chipsEndDate').value;
   const body = document.getElementById('chipsModalBody');
+  const currentPrice = getLatestPrice(code);
 
   // 優先用每日資料
   if (dailyChipsData && dailyChipsData[code]) {
-    renderDailyChips(code, startDate, endDate, dailyChipsData[code], body);
+    renderDailyChips(code, startDate, endDate, dailyChipsData[code], body, currentPrice);
   } else {
     renderWeeklyChipsFallback(code, body);
   }
 }
 
-function renderDailyChips(code, startDate, endDate, stockDaily, body) {
+function renderDailyChips(code, startDate, endDate, stockDaily, body, currentPrice) {
   const brokerMap = {};
   let dayCount = 0;
 
@@ -2500,7 +2512,7 @@ function renderDailyChips(code, startDate, endDate, stockDaily, body) {
   const brokers = Object.entries(brokerMap).map(([name, d]) => ({
     name,
     net: d.net,
-    avgCost: d.volSum > 0 ? (d.wSum / d.volSum).toFixed(1) : '-'
+    avgCost: d.volSum > 0 ? (d.wSum / d.volSum) : null
   }));
 
   const buyers = brokers.filter(b => b.net > 0).sort((a, b) => b.net - a.net);
@@ -2510,27 +2522,40 @@ function renderDailyChips(code, startDate, endDate, stockDaily, body) {
     <div class="chips-grid">
       <div>
         <div class="chips-section-title" style="color:var(--green)">▲ 買超分點（${buyers.length} 家）</div>
-        ${buildChipsTable(buyers, 'buy')}
+        ${buildChipsTable(buyers, 'buy', currentPrice)}
       </div>
       <div>
         <div class="chips-section-title" style="color:var(--red)">▼ 賣超分點（${sellers.length} 家）</div>
-        ${buildChipsTable(sellers, 'sell')}
+        ${buildChipsTable(sellers, 'sell', currentPrice)}
       </div>
     </div>`;
 }
 
-function buildChipsTable(brokers, side) {
+function buildChipsTable(brokers, side, currentPrice) {
   if (!brokers.length) return '<p style="color:var(--text2); font-size:13px; padding:8px 0">無資料</p>';
+  const showRet = !!currentPrice;
   let html = `<table class="chips-table">
-    <thead><tr><th>#</th><th>分點</th><th>淨張</th><th>均成本</th></tr></thead><tbody>`;
+    <thead><tr><th>#</th><th>分點</th><th>淨張</th><th>均成本</th>${showRet ? '<th>報酬率</th>' : ''}</tr></thead><tbody>`;
   brokers.slice(0, 20).forEach((b, i) => {
     const cls = side === 'buy' ? 'buy-row' : 'sell-row';
     const netStr = b.net > 0 ? `+${b.net}` : `${b.net}`;
+    const costStr = b.avgCost != null ? b.avgCost.toFixed(1) : '-';
+    let retCell = '';
+    if (showRet) {
+      if (b.avgCost && b.avgCost > 0) {
+        const ret = (currentPrice - b.avgCost) / b.avgCost * 100;
+        const color = ret >= 0 ? 'var(--green)' : 'var(--red)';
+        retCell = `<td style="color:${color}">${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%</td>`;
+      } else {
+        retCell = `<td>-</td>`;
+      }
+    }
     html += `<tr class="${cls}">
       <td style="color:var(--text2);width:24px">${i+1}</td>
       <td>${b.name}</td>
       <td>${netStr}</td>
-      <td>${b.avgCost}</td>
+      <td>${costStr}</td>
+      ${retCell}
     </tr>`;
   });
   html += '</tbody></table>';
