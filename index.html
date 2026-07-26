@@ -2555,7 +2555,9 @@ function buildChipsTable(brokers, side, currentPrice) {
     let retCell = '';
     if (showRet) {
       if (b.avgCost && b.avgCost > 0) {
-        const ret = (currentPrice - b.avgCost) / b.avgCost * 100;
+        const ret = side === 'sell'
+          ? (b.avgCost - currentPrice) / b.avgCost * 100
+          : (currentPrice - b.avgCost) / b.avgCost * 100;
         const color = ret >= 0 ? 'var(--green)' : 'var(--red)';
         retCell = `<td style="color:${color}">${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%</td>`;
       } else {
