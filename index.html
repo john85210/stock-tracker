@@ -2486,7 +2486,17 @@ function renderChipsModal() {
   const startDate = document.getElementById('chipsStartDate').value;
   const endDate = document.getElementById('chipsEndDate').value;
   const body = document.getElementById('chipsModalBody');
-  const currentPrice = getLatestPrice(code);
+  // 優先用 daily_chips 裡選取區間最後一天有收盤價的那天
+  const stockDaily = (dailyChipsData && dailyChipsData[code]) || null;
+  let currentPrice = null;
+  if (stockDaily) {
+    const datesInRange = Object.keys(stockDaily)
+      .filter(d => d >= startDate && d <= endDate && stockDaily[d].price != null)
+      .sort();
+    if (datesInRange.length > 0)
+      currentPrice = stockDaily[datesInRange[datesInRange.length - 1]].price;
+  }
+  if (currentPrice == null) currentPrice = getLatestPrice(code);
 
   // 優先用每日資料
   if (dailyChipsData && dailyChipsData[code]) {
