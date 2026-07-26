@@ -47,8 +47,7 @@ def process(brokers):
             if date < BDATE or date > EDATE:
                 continue
             net  = int(t.get("netSheets") or 0)
-            cost = float(t.get("avgCost") or t.get("costPrice") or t.get("cost")
-                         or broker.get("avgCost") or 0)
+            cost = float(broker.get("cost") or 0)
             if not net:
                 continue
             dm = date_map.setdefault(date, {})

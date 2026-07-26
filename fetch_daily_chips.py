@@ -102,14 +102,8 @@ def process_day(brokers: list, target_date: str) -> dict:
                 continue
 
             net = t.get("netSheets", 0)
-            # 嘗試多種成本欄位名稱
-            cost = (
-                t.get("avgCost")
-                or t.get("costPrice")
-                or t.get("cost")
-                or broker.get("avgCost")
-                or 0
-            )
+            # 成本在 broker 層級的 cost 欄位
+            cost = broker.get("cost") or 0
             try:
                 net  = int(net)
                 cost = float(cost)
