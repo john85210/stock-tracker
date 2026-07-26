@@ -1020,7 +1020,7 @@ function renderStockTables() {
     const hasBc = !isIdx && !!(appData.brokerChipsMonth?.stocks?.[s.code] || appData.weeks.some(w => w.brokerChips?.[s.code]));
     html += `<tr class="${isIdx ? 'index-row' : ''}${hasBc ? ' bc-has-detail' : ''}">
       <td data-label="#" style="text-align:center; font-weight:600; color:var(--text2)">${rank}</td>
-      <td data-label="標的類型" style="font-size:12px; color:var(--text2)">${s.targetType || '-'}</td>
+      <td data-label="標的類型" style="font-size:12px; color:var(--text2); ${isAdmin ? 'cursor:pointer;' : ''}" ${isAdmin ? `onclick="editTargetType(this,'${s.code}')" title="點擊編輯"` : ''}>${s.targetType || '-'}</td>
       <td data-label="代號">
         ${isIdx
           ? `<span class="code" style="color:var(--gold)">&#x1f3e6;</span>`
@@ -1075,6 +1075,27 @@ function nextWeek() {
     selectedRange = 1;
     render();
   }
+}
+
+// ======================== INLINE EDIT TARGET TYPE ========================
+function editTargetType(td, code) {
+  if (!isAdmin) return;
+  const current = td.textContent.trim() === '-' ? '' : td.textContent.trim();
+  const input = document.createElement('input');
+  input.value = current;
+  input.style.cssText = 'width:70px;padding:2px 4px;border-radius:4px;border:1px solid var(--gold);background:var(--bg);color:var(--text);font-size:12px;';
+  td.innerHTML = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+  const save = () => {
+    const val = input.value.trim();
+    const stock = appData.stocks.find(s => s.code === code);
+    if (stock) { stock.targetType = val; saveData(); }
+    td.textContent = val || '-';
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { td.textContent = current || '-'; } });
 }
 
 // ======================== ADMIN ========================
