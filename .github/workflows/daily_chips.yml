@@ -4,6 +4,8 @@ on:
   schedule:
     # 台灣時間 16:30（UTC+8）= UTC 08:30，週一至週五
     - cron: '30 8 * * 1-5'
+    # 台灣時間 21:30（UTC+8）= UTC 13:30，週一至週五
+    - cron: '30 13 * * 1-5'
   workflow_dispatch:
     # 允許手動觸發（用於測試或補抓資料）
 
@@ -43,6 +45,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes — daily_chips.json already up to date."
           else
-            git commit -m "chore: daily chips $(date -u +'%Y-%m-%d')"
+            git commit -m "chore: daily chips $(date -u +'%Y-%m-%d %H:%M')"
             git push
           fi
+
