@@ -883,8 +883,8 @@ function calcReturn(startPrice, endPrice) {
 // 取最近一筆有效收盤價：週五優先，若無則週一，再往前找
 function getLatestPrice(code) {
   const weeks = [...appData.weeks]
-    .filter(w => w.weekStart)
-    .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+    .filter(w => w.startDate)
+    .sort((a, b) => b.startDate.localeCompare(a.startDate));
   for (const w of weeks) {
     const p = (w.prices || {})[code] || {};
     if (p.fri != null) return p.fri;
