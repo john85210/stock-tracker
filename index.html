@@ -1555,10 +1555,11 @@ async function confirmExcelImport() {
 
     const existing = appData.stocks.find(s => s.code === code);
     if (existing) {
-      // 已存在的股票 → 更新推薦人、報牌時間、選擇原因，並確保在當週可見
+      // 已存在的股票 → 更新推薦人、報牌時間、選擇原因、標的類型，並確保在當週可見
       if (item.recommender) existing.recommender = item.recommender;
       if (item.reportDate) existing.reportDate = item.reportDate;
       if (item.reason && !existing.reason) existing.reason = item.reason;
+      if (item.targetType) existing.targetType = item.targetType;
       // 確保不被當週隱藏
       if (currentWeek.hiddenStocks) {
         currentWeek.hiddenStocks = currentWeek.hiddenStocks.filter(c => c !== code);
