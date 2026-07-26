@@ -1209,20 +1209,22 @@ async function handleExcelUpload(event) {
 
     // Find header row - look for a row containing '個股' or 'Column 5'
     let headerIdx = -1;
-    let colRecommender = -1, colName = -1, colReason = -1, colReportDate = -1;
+    let colRecommender = -1, colName = -1, colReason = -1, colReportDate = -1, colTargetType = -1;
     for (let i = 0; i < Math.min(rows.length, 10); i++) {
       const row = rows[i];
       if (!row) continue;
       const cells = row.map(c => String(c || '').trim());
       // Try to detect columns
-      const nameIdx = cells.findIndex(c => c === '個股' || c.includes('股票') || c.includes('標的'));
+      const nameIdx = cells.findIndex(c => c === '個股' || c.includes('股票') || (c.includes('標的') && !c.includes('類型')));
       const reasonIdx = cells.findIndex(c => c === '故事' || c.includes('原因') || c.includes('理由'));
       const dateIdx = cells.findIndex(c => c.includes('報牌') || c.includes('時間') || c.includes('日期') || c.includes('date'));
+      const targetTypeIdx = cells.findIndex(c => c.includes('標的類型') || c.includes('類型'));
       if (nameIdx >= 0) {
         headerIdx = i;
         colName = nameIdx;
         colReason = reasonIdx >= 0 ? reasonIdx : -1;
         colReportDate = dateIdx >= 0 ? dateIdx : -1;
+        colTargetType = targetTypeIdx >= 0 ? targetTypeIdx : -1;
         // Recommender is typically the column before stock name, or look for 'Column 5' or person-like header
         const recIdx = cells.findIndex(c => c.includes('Column') || c.includes('推薦') || c.includes('成員') || c.includes('姓名'));
         colRecommender = recIdx >= 0 ? recIdx : (nameIdx > 0 ? 0 : -1);
@@ -1250,6 +1252,7 @@ async function handleExcelUpload(event) {
       if (!stockName) continue;
       const recommender = colRecommender >= 0 ? String(row[colRecommender] || '').trim() : '';
       const reason = colReason >= 0 ? String(row[colReason] || '').trim() : '';
+      const targetType = colTargetType >= 0 ? String(row[colTargetType] || '').trim() : '';
       let reportDate = colReportDate >= 0 ? String(row[colReportDate] || '').trim() : '';
       // Excel 日期可能是數字序號，轉成可讀格式
       if (colReportDate >= 0 && typeof row[colReportDate] === 'number') {
@@ -1257,12 +1260,13 @@ async function handleExcelUpload(event) {
         reportDate = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
       }
       const existing = appData.stocks.find(s => s.name === stockName);
-      console.log(`[excel] row ${i}: name="${stockName}", rec="${recommender}", date="${reportDate}", existing=${!!existing}`);
+      console.log(`[excel] row ${i}: name="${stockName}", rec="${recommender}", date="${reportDate}", type="${targetType}", existing=${!!existing}`);
       parsed.push({
         name: stockName,
         recommender: recommender,
         reportDate: reportDate,
         reason: reason,
+        targetType: targetType,
         code: existing ? existing.code : '',
         market: existing ? existing.market : 'tse',
         status: existing ? 'exists' : 'new',
@@ -1463,7 +1467,7 @@ function renderExcelPreview() {
     </div>
     <div style="overflow-x:auto"><table class="excel-preview-table">
       <thead><tr>
-        <th style="width:36px">選</th><th>推薦人</th><th>報牌時間</th><th>股票名稱</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
+        <th style="width:36px">選</th><th>推薦人</th><th>報牌時間</th><th>股票名稱</th><th>標的類型</th><th>代號</th><th>市場</th><th>狀態</th><th>選擇原因</th>
       </tr></thead><tbody>`;
 
   excelImportData.forEach((item, idx) => {
@@ -1480,6 +1484,7 @@ function renderExcelPreview() {
       <td>${item.recommender || '-'}</td>
       <td style="font-size:12px; color:var(--text2)">${item.reportDate || '-'}</td>
       <td style="font-weight:600">${item.name}</td>
+      <td style="font-size:12px; color:var(--text2)">${item.targetType || '-'}</td>
       <td><input id="excelCode${idx}" value="${item.code}" placeholder="代號" ${item.status === 'exists' ? 'readonly style="background:transparent;border-color:transparent;color:var(--text2)"' : ''}></td>
       <td><select id="excelMarket${idx}" ${item.status === 'exists' ? 'disabled' : ''}>
         <option value="tse" ${item.market === 'tse' ? 'selected' : ''}>上市</option>
@@ -1564,7 +1569,8 @@ async function confirmExcelImport() {
       appData.stocks.push({
         code, name: item.name, group: 'watchlist', market,
         reason: item.reason, recommender: item.recommender,
-        reportDate: item.reportDate, addedWeekStart
+        reportDate: item.reportDate, targetType: item.targetType || '',
+        addedWeekStart
       });
       newStockCodes.push({ code, market });
       added++;
@@ -1996,10 +2002,10 @@ async function exportData() {
 
   const monLabel = week.startDate.slice(5).replace('-', '/') + '開盤';
   const friLabel = week.endDate.slice(5).replace('-', '/') + '收盤';
-  const header = ['股票代號', '標的', '推薦人', '報牌時間', '選擇原因', monLabel, friLabel, '本週報酬率'];
+  const header = ['標的類型', '股票代號', '標的', '推薦人', '報牌時間', '選擇原因', monLabel, friLabel, '本週報酬率'];
 
   const rows = [header];
-  const taiexRowData = ['', '加權指數', '', '', '', taiexP.mon ?? '', taiexP.fri ?? '',
+  const taiexRowData = ['', '', '加權指數', '', '', '', taiexP.mon ?? '', taiexP.fri ?? '',
                        taiexReturn != null ? taiexReturn / 100 : ''];
   let taiexInserted = false;
   let taiexRowIdx = -1;
@@ -2012,6 +2018,7 @@ async function exportData() {
       taiexInserted = true;
     }
     rows.push([
+      item.stock.targetType || '',
       item.stock.code,
       item.stock.name,
       item.stock.recommender || '',
@@ -2031,7 +2038,7 @@ async function exportData() {
 
   // 欄寬
   ws['!cols'] = [
-    { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 60 },
+    { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 60 },
     { wch: 12 }, { wch: 12 }, { wch: 14 }
   ];
 
