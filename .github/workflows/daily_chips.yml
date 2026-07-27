@@ -34,6 +34,7 @@ jobs:
         run: python fetch_daily_chips.py
 
       - name: Commit and push daily_chips.json
+        if: always()
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
