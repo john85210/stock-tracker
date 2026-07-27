@@ -207,8 +207,9 @@ def main():
     print(f"\n完成：成功 {success} / 無資料 {empty} / 錯誤 {errors}")
     print(f"已儲存至 {DAILY_JSON}")
 
-    if errors > 0:
-        sys.exit(1)  # 讓 Actions 標記為失敗
+    # 只有全部股票都失敗才視為嚴重錯誤
+    if errors > 0 and success == 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
