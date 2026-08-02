@@ -68,6 +68,8 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .name { font-weight: 600; }
 .recommender { font-size: 13px; color: var(--accent2); white-space: nowrap; }
 .report-date { font-size: 12px; color: var(--text2); white-space: nowrap; }
+.hide-identity .col-recommender,
+.hide-identity .col-report-date { display: none; }
 .reason { max-width: 400px; font-size: 13px; color: var(--text2); line-height: 1.5; }
 .price { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .return-cell { font-weight: 700; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -517,6 +519,9 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   <button class="range-btn" onclick="setRange(4)">4 週</button>
   <button class="range-btn" onclick="showCustomRange()">自訂</button>
   <span class="range-info" id="rangeInfo"></span>
+  <span style="margin-left:8px; border-left:1px solid var(--border); padding-left:12px;">
+    <button class="range-btn" id="toggleIdentityBtn" onclick="toggleIdentity()">隱藏推薦人</button>
+  </span>
 </div>
 
 <p class="note-taiwan">台股慣例：<span>紅色 = 上漲</span>，<span class="green-note">綠色 = 下跌</span></p>
@@ -1076,7 +1081,7 @@ function renderStockTables() {
   const colCount = isAdmin ? 10 : 9;
   const tableHeader = `<thead><tr>
         <th style="width:40px">#</th>
-        <th>標的類型</th><th>代號</th><th>標的</th><th>推薦人</th><th>報牌時間</th><th>選擇原因</th>
+        <th>標的類型</th><th>代號</th><th>標的</th><th class="col-recommender">推薦人</th><th class="col-report-date">報牌時間</th><th>選擇原因</th>
         <th style="text-align:right">${startDateLabel} 開盤</th>
         <th style="text-align:right">${endDateLabel} 收盤</th>
         <th style="text-align:right">${returnLabel}</th>
@@ -1102,8 +1107,8 @@ function renderStockTables() {
              <button class="stock-chip-btn" onclick="showChipsModal('${s.code}','${s.name.replace(/'/g,"\\'")}')">籌碼</button>`
         }</td>
         <td data-label="標的" class="name">${isIdx ? `<span style="color:var(--gold); font-weight:700">${s.name}</span>` : s.name}</td>
-        <td data-label="推薦人" class="recommender">${isIdx ? '' : (s.recommender || '-')}</td>
-        <td data-label="報牌時間" class="report-date">${isIdx ? '' : (s.reportDate || '-')}</td>
+        <td data-label="推薦人" class="recommender col-recommender">${isIdx ? '' : (s.recommender || '-')}</td>
+        <td data-label="報牌時間" class="report-date col-report-date">${isIdx ? '' : (s.reportDate || '-')}</td>
         <td data-label="選擇原因" class="reason">${isIdx ? '' : s.reason}</td>
         <td data-label="${startDateLabel} 開盤" class="price">${startPrice != null ? startPrice.toLocaleString() : '-'}</td>
         <td data-label="${endDateLabel} 收盤" class="price">${endPrice != null ? endPrice.toLocaleString() : '-'}</td>
@@ -2411,6 +2416,22 @@ function bcToggle(uid) {
 
 // Init
 render();
+applyIdentityVisibility();
+
+// ======================== IDENTITY TOGGLE ========================
+let hideIdentity = localStorage.getItem('hideIdentity') === 'true';
+
+function applyIdentityVisibility() {
+  document.getElementById('stockContent').classList.toggle('hide-identity', hideIdentity);
+  const btn = document.getElementById('toggleIdentityBtn');
+  if (btn) btn.textContent = hideIdentity ? '顯示推薦人' : '隱藏推薦人';
+}
+
+function toggleIdentity() {
+  hideIdentity = !hideIdentity;
+  localStorage.setItem('hideIdentity', hideIdentity);
+  applyIdentityVisibility();
+}
 
 // ======================== CHIPS MODAL ========================
 let dailyChipsData = null;
