@@ -36,7 +36,10 @@ a { color: var(--accent2); text-decoration: none; }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 
 /* Week Navigation */
-.week-nav { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 32px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+.week-nav { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 32px 10px; background: var(--bg2); }
+.week-note-bar { background: var(--bg2); border-bottom: 1px solid var(--border); text-align: center; padding: 0 16px 10px; font-size: 12px; color: var(--text2); line-height: 1.6; min-height: 24px; }
+.week-note-bar.empty { min-height: 0; padding-bottom: 0; }
+.week-note-edit-btn { background: none; border: 1px solid var(--border); color: var(--accent2); font-size: 11px; cursor: pointer; padding: 1px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
 .week-nav button { background: none; border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 18px; }
 .week-nav button:hover { border-color: var(--accent); background: var(--bg3); }
 .week-label { font-size: 18px; font-weight: 600; min-width: 320px; text-align: center; }
@@ -511,6 +514,8 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   <button class="btn btn-sm admin-only" style="display:none; background:#5a1f1f; color:#ffb4b4;" onclick="deleteCurrentWeek()">&#x1f5d1; 刪除本週</button>
 </div>
 
+<div class="week-note-bar" id="weekNoteBar"></div>
+
 <div class="range-bar">
   <span class="label">報酬區間：</span>
   <button class="range-btn active" onclick="setRange(1)">1 週</button>
@@ -519,8 +524,9 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   <button class="range-btn" onclick="setRange(4)">4 週</button>
   <button class="range-btn" onclick="showCustomRange()">自訂</button>
   <span class="range-info" id="rangeInfo"></span>
-  <span style="margin-left:8px; border-left:1px solid var(--border); padding-left:12px;">
+  <span style="margin-left:8px; border-left:1px solid var(--border); padding-left:12px; display:flex; gap:6px;">
     <button class="range-btn" id="toggleIdentityBtn" onclick="toggleIdentity()">隱藏推薦人</button>
+    <button class="range-btn" id="toggleNoteBtn" onclick="toggleWeekNote()">隱藏備註</button>
   </span>
 </div>
 
@@ -920,6 +926,25 @@ function render() {
 
   document.getElementById('weekLabel').textContent =
     `第 ${week.weekNum} 週：${week.startDate.replace(/-/g,'/')} ~ ${week.endDate.replace(/-/g,'/')}`;
+
+  // 週備註
+  const noteBar = document.getElementById('weekNoteBar');
+  if (noteBar) {
+    const note = week.weekNote || '';
+    const editBtn = isAdmin
+      ? `<button class="week-note-edit-btn admin-only" onclick="editWeekNote()">✎ 編輯</button>`
+      : '';
+    if (note) {
+      noteBar.innerHTML = `<span>${note}</span>${editBtn}`;
+      noteBar.classList.remove('empty');
+    } else if (isAdmin) {
+      noteBar.innerHTML = `<span style="color:var(--border); font-style:italic">點擊新增本週備註</span>${editBtn}`;
+      noteBar.classList.add('empty');
+    } else {
+      noteBar.innerHTML = '';
+      noteBar.classList.add('empty');
+    }
+  }
 
   document.querySelectorAll('.range-btn').forEach(btn => btn.classList.remove('active'));
   const rangeBtns = document.querySelectorAll('.range-btn');
@@ -2414,6 +2439,33 @@ function bcToggle(uid) {
   if (arrow) arrow.textContent = open ? '▼' : '▶';
 }
 
+// ======================== WEEK NOTE ========================
+let hideWeekNote = localStorage.getItem('hideWeekNote') === 'true';
+
+function applyWeekNoteVisibility() {
+  const bar = document.getElementById('weekNoteBar');
+  if (bar) bar.style.display = hideWeekNote ? 'none' : '';
+  const btn = document.getElementById('toggleNoteBtn');
+  if (btn) btn.textContent = hideWeekNote ? '顯示備註' : '隱藏備註';
+}
+
+function toggleWeekNote() {
+  hideWeekNote = !hideWeekNote;
+  localStorage.setItem('hideWeekNote', hideWeekNote);
+  applyWeekNoteVisibility();
+}
+
+function editWeekNote() {
+  const week = appData.weeks[currentWeekIdx];
+  const current = week.weekNote || '';
+  const note = prompt('本週備註（可記錄更新了哪些股票）：', current);
+  if (note === null) return;
+  week.weekNote = note.trim();
+  saveData();
+  render();
+  applyWeekNoteVisibility();
+}
+
 // ======================== IDENTITY TOGGLE ========================
 let hideIdentity = localStorage.getItem('hideIdentity') === 'true';
 
@@ -2432,6 +2484,7 @@ function toggleIdentity() {
 // Init
 render();
 applyIdentityVisibility();
+applyWeekNoteVisibility();
 
 // ======================== CHIPS MODAL ========================
 let dailyChipsData = null;
