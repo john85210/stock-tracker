@@ -1,0 +1,46 @@
+name: Weekly Stock Lookup Table Fetch
+
+on:
+  schedule:
+    # 台灣時間每週一 07:00（UTC+8）= UTC 週日 23:00
+    - cron: '0 23 * * 0'
+  workflow_dispatch:
+    # 允許手動觸發
+
+jobs:
+  fetch-lookup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 允許 commit & push
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch stock lookup table
+        run: python fetch_lookup.py
+
+      - name: Commit and push stock_lookup.json
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ ! -f stock_lookup.json ]; then
+            echo "stock_lookup.json 不存在（抓取失敗），無需 commit。"
+            exit 0
+          fi
+          git add stock_lookup.json
+          if git diff --staged --quiet; then
+            echo "No changes — stock_lookup.json already up to date."
+          else
+            git commit -m "chore: weekly stock lookup table $(date -u +'%Y-%m-%d')"
+            git push
+          fi

@@ -1,0 +1,46 @@
+name: Daily Price History Fetch
+
+on:
+  schedule:
+    # 台灣時間 16:40（UTC+8）= UTC 08:40，週一至週五（收盤後、daily_chips 之後）
+    - cron: '40 8 * * 1-5'
+  workflow_dispatch:
+    # 允許手動觸發（用於測試或補抓資料）
+
+jobs:
+  fetch-prices:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 允許 commit & push
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Fetch price history
+        run: python fetch_prices.py
+
+      - name: Commit and push price_history.json
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ ! -f price_history.json ]; then
+            echo "price_history.json 不存在（抓取失敗），無需 commit。"
+            exit 0
+          fi
+          git add price_history.json
+          if git diff --staged --quiet; then
+            echo "No changes — price_history.json already up to date."
+          else
+            git commit -m "chore: daily price history $(date -u +'%Y-%m-%d %H:%M')"
+            git push
+          fi
