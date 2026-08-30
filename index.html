@@ -891,9 +891,17 @@ async function syncFromGitHub() {
       updateSyncStatus('synced');
       console.log('[sync] 已從 GitHub 讀取資料，版本時間：', new Date(remoteTs).toLocaleString());
     } else {
-      // 本地比較新 → 提醒使用者上傳
-      updateSyncStatus('pending');
-      console.log('[sync] 本地版本比 GitHub 新，請記得按「下載 data.json」並上傳到 GitHub');
+      // 本地比較新
+      if (getGithubPAT()) {
+        // 有設定自動同步：立刻補推一次（例如剛剛編輯完就重新整理頁面，推送還沒來得及發生）
+        console.log('[sync] 本地版本比 GitHub 新，補推一次自動同步');
+        updateSyncStatus('pending');
+        scheduleGithubPush();
+      } else {
+        // 沒設定自動同步 → 提醒使用者手動上傳
+        updateSyncStatus('pending');
+        console.log('[sync] 本地版本比 GitHub 新，請記得按「下載 data.json」並上傳到 GitHub');
+      }
     }
   } catch(e) {
     console.warn('[sync] GitHub 讀取失敗', e);
@@ -938,7 +946,7 @@ function utf8ToBase64(str) {
 
 async function ghFetchLatestSha() {
   const resp = await fetch(GH_API_BASE + '?ref=main&t=' + Date.now(), {
-    headers: ghHeaders(), cache: 'no-store'
+    headers: ghHeaders(), cache: 'no-store', signal: AbortSignal.timeout(12000)
   });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}（讀取現有檔案 sha 失敗）`);
   const body = await resp.json();
@@ -950,6 +958,7 @@ async function ghPutDataJSON(sha) {
   const resp = await fetch(GH_API_BASE, {
     method: 'PUT',
     headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(15000),
     body: JSON.stringify({
       message: `chore: update data.json via web UI (${new Date().toISOString()})`,
       content,
