@@ -497,8 +497,8 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     <span id="adminIndicator" style="display:none; color: var(--gold); font-size: 13px;">&#x1f511; 管理員模式</span>
     <button class="btn" id="btnAdminToggle" onclick="toggleAdmin()">管理員登入</button>
     <button class="btn" onclick="exportData()">匯出 Excel</button>
-    <button class="btn admin-only" style="display:none" onclick="downloadDataJSON()">&#x1f4e4; 下載 data.json</button>
-    <button class="btn admin-only" style="display:none" onclick="showUploadHelp()">&#x2753; 如何上傳</button>
+    <button class="btn admin-only" style="display:none" onclick="showGithubSyncModal()">&#x1f517; GitHub 自動同步</button>
+    <button class="btn admin-only" style="display:none" onclick="downloadDataJSON()">&#x1f4e4; 下載 data.json（備份）</button>
     <button class="btn admin-only" style="display:none" onclick="document.getElementById('excelImportInput').click()">&#x1f4c4; 匯入 Excel 持股</button>
     <input type="file" id="excelImportInput" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
     <button class="btn" onclick="document.getElementById('importInput').click()">匯入 JSON</button>
@@ -583,23 +583,52 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 <!-- Upload Help Modal -->
 <div class="modal-overlay" id="uploadHelpModal">
   <div class="modal" style="max-width:560px">
-    <h3>&#x1f4e4; 如何把變更同步到 GitHub</h3>
+    <h3>&#x1f4e4; 手動同步到 GitHub（備援流程）</h3>
     <p style="color: var(--text2); font-size: 14px; line-height: 1.7;">
-      你剛剛下載了 <code>data.json</code>。把它上傳回 GitHub 後，任何人用任何瀏覽器（包含無痕視窗、手機、別台電腦）打開網頁都會看到最新資料。
+      建議改用「&#x1f517; GitHub 自動同步」設定一次性 Token 之後就不用再手動做這件事了。
+      但如果暫時沒有設定，或想備份存檔，可以照以下步驟手動上傳剛下載的 <code>data.json</code>：
     </p>
     <ol style="color: var(--text); font-size: 14px; line-height: 1.9; padding-left: 20px;">
       <li>到 <a href="https://github.com/john85210/stock-tracker" target="_blank" style="color:var(--gold)">你的 stock-tracker repo</a></li>
-      <li>如果是第一次：點右上角 <b>Add file → Upload files</b>，把剛下載的 <code>data.json</code> 拖進去</li>
-      <li>如果已經存在：點進 <code>data.json</code> → 右上鉛筆圖示 → 全選刪掉 → 貼上新檔內容</li>
+      <li>點進 <code>data.json</code> → 右上鉛筆圖示 → 全選刪掉 → 貼上新檔內容</li>
       <li>滾到最下面按 <b>Commit changes</b></li>
       <li>等 1~2 分鐘讓 GitHub Pages 刷新</li>
       <li>重新整理網頁即可看到同步後的狀態</li>
     </ol>
-    <p style="color: var(--text2); font-size: 12px; margin-top: 10px;">
-      💡 最快的方式：直接把 <code>data.json</code> 拖到 GitHub repo 的網頁上，它會自動進入 commit 流程。
-    </p>
     <div style="display:flex; gap:8px; justify-content:flex-end; margin-top: 16px;">
       <button class="btn btn-primary" onclick="closeModal('uploadHelpModal')">我知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub 自動同步設定 Modal -->
+<div class="modal-overlay" id="githubSyncModal">
+  <div class="modal" style="max-width:560px">
+    <h3>&#x1f517; GitHub 自動同步設定</h3>
+    <p style="color: var(--text2); font-size: 13px; line-height: 1.7;">
+      設定一組 GitHub Personal Access Token 後，往後新增股票、編輯價格、Excel 匯入等任何變更，
+      會自動 commit 回 <code>data.json</code>，不用再手動下載/上傳。Token 只會存在<b>這台瀏覽器</b>的 localStorage，不會上傳到任何地方。
+    </p>
+    <p style="color: var(--gold); font-size: 12px; line-height: 1.7; background: rgba(234,179,8,.08); border: 1px solid rgba(234,179,8,.3); border-radius: 8px; padding: 10px 12px; margin-top: 10px;">
+      ⚠️ 安全提醒：這台瀏覽器如果被別人拿到（或裝置中毒），對方可能透過開發者工具讀到這組 Token 進而竄改你的 repo。
+      請務必使用 <b>Fine-grained token</b>，只勾選這一個 repo（stock-tracker），
+      Permissions 只給 <b>Contents: Read and write</b>，不要用能動到其他 repo 的 classic token。
+    </p>
+    <div class="form-group" style="margin-top:14px;">
+      <label>Personal Access Token</label>
+      <input type="password" id="githubPATInput" placeholder="github_pat_xxxxxxxxxxxx" autocomplete="off">
+    </div>
+    <p id="githubPATStatus" style="font-size:12px; color:var(--text2); margin-top:-6px;"></p>
+    <p style="color: var(--text2); font-size: 12px; line-height: 1.6;">
+      還沒建立 Token？前往
+      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" style="color:var(--gold)">GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token</a>，
+      Repository access 選「Only select repositories」→ 選 <code>stock-tracker</code>，
+      Permissions → Repository permissions → <b>Contents</b> 設為 <b>Read and write</b>，其餘保持 No access 即可。
+    </p>
+    <div class="admin-actions">
+      <button class="btn btn-danger" onclick="clearGithubPAT()">清除 Token（改回手動模式）</button>
+      <button class="btn" onclick="closeModal('githubSyncModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveGithubPAT()">儲存並測試</button>
     </div>
   </div>
 </div>
@@ -797,7 +826,12 @@ function saveData() {
   appData.lastModified = Date.now();
   localStorage.setItem('stockTrackerData', JSON.stringify(appData));
   render();
-  updateSyncStatus('pending');
+  if (getGithubPAT()) {
+    updateSyncStatus('pending');
+    scheduleGithubPush();
+  } else {
+    updateSyncStatus('pending');
+  }
 }
 
 let pendingTimer = null;
@@ -809,15 +843,24 @@ function updateSyncStatus(state) {
     el.innerHTML = '<span class="sync-dot online"></span>已同步';
     el.style.color = '#5fd46f';
     el.style.display = '';
+    pendingTimer = setTimeout(() => { el.style.display = 'none'; }, 4000);
   } else if (state === 'pending') {
-    el.innerHTML = '<span class="sync-dot" style="background:#f39c12"></span>未上傳 <span onclick="updateSyncStatus(\'hide\')" style="cursor:pointer;margin-left:4px;opacity:.6;font-size:10px">✕</span>';
+    const hasPat = !!getGithubPAT();
+    const label = hasPat ? '即將自動同步…' : '未上傳';
+    el.innerHTML = `<span class="sync-dot" style="background:#f39c12"></span>${label} <span onclick="updateSyncStatus('hide')" style="cursor:pointer;margin-left:4px;opacity:.6;font-size:10px">✕</span>`;
     el.style.color = '#f39c12';
     el.style.display = '';
-    // 5 秒後自動淡出
-    pendingTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
+    if (!hasPat) {
+      // 沒設定自動同步：5 秒後自動淡出（提醒使用者要手動上傳）
+      pendingTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
   } else if (state === 'syncing') {
     el.innerHTML = '<span class="sync-dot" style="background:#3498db"></span>同步中...';
     el.style.color = '#3498db';
+    el.style.display = '';
+  } else if (state === 'error') {
+    el.innerHTML = '<span class="sync-dot offline"></span>自動同步失敗，請檢查 Token';
+    el.style.color = '#ef4444';
     el.style.display = '';
   } else if (state === 'hide') {
     el.style.display = 'none';
@@ -856,6 +899,164 @@ async function syncFromGitHub() {
     console.warn('[sync] GitHub 讀取失敗', e);
     updateSyncStatus('offline');
   }
+}
+
+// ======================== GITHUB AUTO SYNC（PAT 寫入 data.json）========================
+// 設定 Personal Access Token 後，saveData() 會在幾秒防抖後自動把 data.json
+// 透過 GitHub Contents API commit 回 repo，不需要再手動下載/上傳。
+// Token 只存在這台瀏覽器的 localStorage，從不上傳到別的地方。
+const GH_OWNER = 'john85210';
+const GH_REPO = 'stock-tracker';
+const GH_API_BASE = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/data.json`;
+const GH_PAT_KEY = 'stockTrackerGithubPAT';
+const GH_SHA_KEY = 'stockTrackerGithubDataSha';
+const GH_PUSH_DEBOUNCE_MS = 4000; // 連續編輯時，等 4 秒沒有新動作才真正推送，避免洗版 commit
+
+let ghPushTimer = null;
+let ghPushInFlight = false;
+let ghPushQueued = false;
+
+function getGithubPAT() {
+  return (localStorage.getItem(GH_PAT_KEY) || '').trim();
+}
+
+function ghHeaders() {
+  return {
+    'Authorization': `Bearer ${getGithubPAT()}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+
+// UTF-8 安全的 base64 編碼（含中文），GitHub Contents API 要求 content 是 base64
+function utf8ToBase64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach(b => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+}
+
+async function ghFetchLatestSha() {
+  const resp = await fetch(GH_API_BASE + '?ref=main&t=' + Date.now(), {
+    headers: ghHeaders(), cache: 'no-store'
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}（讀取現有檔案 sha 失敗）`);
+  const body = await resp.json();
+  return body.sha;
+}
+
+async function ghPutDataJSON(sha) {
+  const content = utf8ToBase64(JSON.stringify(appData, null, 2));
+  const resp = await fetch(GH_API_BASE, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: `chore: update data.json via web UI (${new Date().toISOString()})`,
+      content,
+      sha,
+      branch: 'main'
+    })
+  });
+  return resp;
+}
+
+async function ghPushDataJSON() {
+  const pat = getGithubPAT();
+  if (!pat) return;
+
+  if (ghPushInFlight) { ghPushQueued = true; return; }
+  ghPushInFlight = true;
+  updateSyncStatus('syncing');
+
+  try {
+    let sha = localStorage.getItem(GH_SHA_KEY);
+    if (!sha) sha = await ghFetchLatestSha();
+
+    let resp = await ghPutDataJSON(sha);
+
+    if (resp.status === 409) {
+      // sha 過期（可能有其他來源改過檔案）→ 重新抓最新 sha 再試一次
+      sha = await ghFetchLatestSha();
+      resp = await ghPutDataJSON(sha);
+    }
+
+    if (resp.status === 401 || resp.status === 403) {
+      throw new Error(`HTTP ${resp.status}（Token 無效或權限不足，請重新設定）`);
+    }
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status} ${errText.slice(0, 150)}`);
+    }
+
+    const body = await resp.json();
+    localStorage.setItem(GH_SHA_KEY, body.content.sha);
+    updateSyncStatus('synced');
+    console.log('[github-sync] data.json 已自動推送到 GitHub');
+  } catch(e) {
+    console.error('[github-sync] 推送失敗', e);
+    updateSyncStatus('error');
+    showToast('自動同步到 GitHub 失敗：' + e.message, 'error');
+  } finally {
+    ghPushInFlight = false;
+    if (ghPushQueued) {
+      ghPushQueued = false;
+      ghPushDataJSON();
+    }
+  }
+}
+
+function scheduleGithubPush() {
+  if (!getGithubPAT()) return;
+  if (ghPushTimer) clearTimeout(ghPushTimer);
+  ghPushTimer = setTimeout(() => { ghPushDataJSON(); }, GH_PUSH_DEBOUNCE_MS);
+}
+
+function showGithubSyncModal() {
+  const hasPat = !!getGithubPAT();
+  const statusEl = document.getElementById('githubPATStatus');
+  const inputEl = document.getElementById('githubPATInput');
+  inputEl.value = '';
+  statusEl.textContent = hasPat ? '✅ 目前已設定自動同步' : '尚未設定，目前是手動下載/上傳模式';
+  statusEl.style.color = hasPat ? 'var(--green)' : 'var(--text2)';
+  showModal('githubSyncModal');
+}
+
+async function saveGithubPAT() {
+  const input = document.getElementById('githubPATInput');
+  const statusEl = document.getElementById('githubPATStatus');
+  const token = input.value.trim();
+  if (!token) { showToast('請輸入 Token', 'error'); return; }
+
+  statusEl.textContent = '測試連線中...';
+  statusEl.style.color = 'var(--text2)';
+  localStorage.setItem(GH_PAT_KEY, token);
+  localStorage.removeItem(GH_SHA_KEY); // 換了 token，強制重新抓一次最新 sha
+
+  try {
+    const sha = await ghFetchLatestSha();
+    localStorage.setItem(GH_SHA_KEY, sha);
+    statusEl.textContent = '✅ 測試成功，已啟用自動同步';
+    statusEl.style.color = 'var(--green)';
+    showToast('GitHub 自動同步已啟用', 'success');
+    updateSyncStatus('hide');
+    setTimeout(() => closeModal('githubSyncModal'), 900);
+  } catch(e) {
+    localStorage.removeItem(GH_PAT_KEY);
+    statusEl.textContent = '❌ 測試失敗：' + e.message;
+    statusEl.style.color = 'var(--red)';
+    showToast('Token 測試失敗，請確認權限設定', 'error');
+  }
+}
+
+function clearGithubPAT() {
+  localStorage.removeItem(GH_PAT_KEY);
+  localStorage.removeItem(GH_SHA_KEY);
+  const statusEl = document.getElementById('githubPATStatus');
+  if (statusEl) {
+    statusEl.textContent = '已清除，改回手動下載/上傳模式';
+    statusEl.style.color = 'var(--text2)';
+  }
+  showToast('已清除 Token，改回手動同步模式', 'success');
 }
 
 // Hide loading overlay on init
@@ -2133,7 +2334,7 @@ async function exportData() {
   showToast('已匯出 Excel 檔', 'success');
 }
 
-// 下載 data.json 給使用者上傳回 GitHub
+// 下載 data.json（備份用；若已設定 GitHub 自動同步，這一步不是必要的）
 function downloadDataJSON() {
   // 確保檔案有時間戳，之後 syncFromGitHub 才判斷得出誰比較新
   appData.lastModified = Date.now();
@@ -2144,8 +2345,12 @@ function downloadDataJSON() {
   a.download = 'data.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  // 下載後直接打開上傳說明
-  showUploadHelp();
+  if (getGithubPAT()) {
+    showToast('已下載備份。已啟用自動同步，不需要手動上傳', 'success');
+  } else {
+    // 尚未設定自動同步：沿用舊流程，打開手動上傳說明
+    showUploadHelp();
+  }
 }
 
 function showUploadHelp() {
