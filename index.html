@@ -769,6 +769,10 @@ const defaultData = {
 // ======================== GITHUB SYNC CONFIG ========================
 // 把 data.json commit 到這個 repo 的 main 分支根目錄，任何人開啟網頁會自動讀取
 const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/john85210/stock-tracker/main/data.json';
+// 股票代號對照表（由 fetch_lookup.py 於 GitHub Actions 每週更新）
+const LOOKUP_JSON_URL = 'https://raw.githubusercontent.com/john85210/stock-tracker/main/stock_lookup.json';
+// 每日收盤/開盤價歷史（由 fetch_prices.py 於 GitHub Actions 每個交易日更新）
+const PRICE_HISTORY_URL = 'https://raw.githubusercontent.com/john85210/stock-tracker/main/price_history.json';
 
 function loadData() {
   try {
@@ -1463,97 +1467,46 @@ async function handleExcelUpload(event) {
 }
 
 // ======================== 股票名稱→代號 對照表 ========================
-// 從證交所 / 櫃買中心 OpenAPI 載入完整清單並快取 7 天
+// 改為讀取 stock_lookup.json（由 GitHub Actions 的 fetch_lookup.py 在伺服器端
+// 每週抓取證交所/櫃買中心 OpenAPI 並 commit 回 repo）。前端不再直接呼叫
+// TWSE/TPEx，也不再需要任何 CORS proxy —— 讀取同一個 repo 的靜態 JSON
+// 屬於同源請求，速度快也不會被擋。
 let stockLookupMap = null;
 
 async function loadStockLookupTable() {
-  // 檢查快取
+  // 先用本地快取（1 天內有效；來源資料本身每週才更新一次，天天重抓沒有意義）
   try {
     const cached = localStorage.getItem('twStockLookup');
     if (cached) {
       const data = JSON.parse(cached);
-      if (data.ts && Date.now() - data.ts < 7 * 86400000 && Object.keys(data.map).length > 100) {
-        console.log(`[lookup] 使用快取，共 ${Object.keys(data.map).length} 檔`);
+      if (data.ts && Date.now() - data.ts < 86400000 && Object.keys(data.map).length > 100) {
+        console.log(`[lookup] 使用本地快取，共 ${Object.keys(data.map).length} 檔`);
         stockLookupMap = data.map;
         return data.map;
       }
     }
   } catch(e) {}
 
-  const map = {};
-  console.log('[lookup] 開始從證交所/櫃買中心載入股票清單...');
-
-  // ---- 上市 (TSE) ----
-  const tseUrls = [
-    'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
-    'https://openapi.twse.com.tw/v1/opendata/t187ap03_L'
-  ];
-  for (const tseUrl of tseUrls) {
-    try {
-      let tseData;
-      try {
-        const resp = await fetch(tseUrl, { signal: AbortSignal.timeout(8000) });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        tseData = await resp.json();
-      } catch(e) {
-        console.log('[lookup] TSE 直連失敗，嘗試 proxy...', e.message);
-        tseData = await fetchViaProxy(tseUrl, 10000);
-      }
-      if (Array.isArray(tseData) && tseData.length > 0) {
-        tseData.forEach(item => {
-          const code = (item.Code || item['證券代號'] || item['公司代號'] || '').toString().trim();
-          const name = (item.Name || item['證券名稱'] || item['公司簡稱'] || '').toString().trim();
-          if (code && name && /^\d{4,6}$/.test(code)) {
-            map[name] = { code, market: 'tse' };
-          }
-        });
-        console.log(`[lookup] TSE 載入成功 (${tseUrl.split('/').pop()})，共 ${Object.keys(map).length} 檔`);
-        break; // 成功就不試下一個 URL
-      }
-    } catch(e) { console.warn('[lookup] TSE 載入失敗', tseUrl, e.message); }
+  console.log('[lookup] 從 stock_lookup.json 載入股票對照表...');
+  try {
+    const resp = await fetch(LOOKUP_JSON_URL + '?t=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const map = data.map || {};
+    const total = Object.keys(map).length;
+    if (total > 0) {
+      localStorage.setItem('twStockLookup', JSON.stringify({ ts: Date.now(), map }));
+      console.log(`[lookup] 載入成功，共 ${total} 檔（來源更新時間：${data.ts ? new Date(data.ts).toLocaleString() : '未知'}）`);
+    } else {
+      console.warn('[lookup] stock_lookup.json 是空的');
+    }
+    stockLookupMap = map;
+    return map;
+  } catch(e) {
+    console.warn('[lookup] 載入 stock_lookup.json 失敗', e.message);
+    stockLookupMap = stockLookupMap || {};
+    return stockLookupMap;
   }
-
-  // ---- 上櫃 (OTC) ----
-  const otcUrls = [
-    'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',
-    'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O'
-  ];
-  const tseCount = Object.keys(map).length;
-  for (const otcUrl of otcUrls) {
-    try {
-      let otcData;
-      try {
-        const resp = await fetch(otcUrl, { signal: AbortSignal.timeout(8000) });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        otcData = await resp.json();
-      } catch(e) {
-        console.log('[lookup] OTC 直連失敗，嘗試 proxy...', e.message);
-        otcData = await fetchViaProxy(otcUrl, 10000);
-      }
-      if (Array.isArray(otcData) && otcData.length > 0) {
-        otcData.forEach(item => {
-          const code = (item.SecuritiesCompanyCode || item.Code || item['證券代號'] || item['公司代號'] || '').toString().trim();
-          const name = (item.CompanyName || item.Name || item['公司簡稱'] || item['證券名稱'] || '').toString().trim();
-          if (code && name && /^\d{4,6}$/.test(code) && !map[name]) {
-            map[name] = { code, market: 'otc' };
-          }
-        });
-        const otcCount = Object.keys(map).length - tseCount;
-        console.log(`[lookup] OTC 載入成功，共 ${otcCount} 檔`);
-        break;
-      }
-    } catch(e) { console.warn('[lookup] OTC 載入失敗', otcUrl, e.message); }
-  }
-
-  const total = Object.keys(map).length;
-  if (total > 0) {
-    localStorage.setItem('twStockLookup', JSON.stringify({ ts: Date.now(), map }));
-    console.log(`[lookup] 股票對照表已快取，共 ${total} 檔`);
-  } else {
-    console.warn('[lookup] 無法載入任何股票資料');
-  }
-  stockLookupMap = map;
-  return map;
 }
 
 // 用名稱查代號（支援模糊比對：去除 -KY、* 等後綴）
@@ -1880,90 +1833,22 @@ function deleteCurrentWeek() {
 }
 
 // ======================== API FETCHING ========================
-async function fetchAllPrices() {
-  const week = appData.weeks[currentWeekIdx];
-  const statusEl = document.getElementById('fetchStatus');
-  const btn = document.getElementById('fetchBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="fetch-spinner"></span>抓取中...';
-  statusEl.textContent = '';
+// 改為讀取 price_history.json（由 GitHub Actions 的 fetch_prices.py 每個交易日
+// 收盤後在伺服器端用 yfinance 抓取，commit 回 repo）。前端只做一次同源 fetch，
+// 不再對 Yahoo Finance 打 CORS proxy，也不再需要逐檔請求 + sleep 節流。
 
-  // 目標週：本週 + 往前最多 4 週（共最多 5 週），讓 2/3/4 週範圍也能正確計算
-  const targetWeeks = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
-  const fromDate = targetWeeks[targetWeeks.length - 1].startDate;
-  const toDate = targetWeeks[0].endDate;
+let priceHistoryMap = null;      // { code: { 'YYYY-MM-DD': {open, close} }, __meta: {...} }
+let priceHistoryLoadedAt = 0;
 
-  // 只抓取在「當前這一週」可見的股票
-  const stocks = appData.stocks.filter(s => s.code !== 'TAIEX' && stockVisibleInWeek(s, week));
-  let success = 0, fail = 0;
-
-  // 加權指數：一次抓整段日期
-  statusEl.textContent = '正在抓取加權指數 (5 週)...';
-  try {
-    const map = await fetchYahooDateMap('%5ETWII', fromDate, toDate);
-    if (map) {
-      let tFilled = 0;
-      targetWeeks.forEach(w => {
-        const wp = extractWeekPricesFromMap(map, w.startDate, w.endDate);
-        if (!wp) return;
-        if (!w.prices) w.prices = {};
-        if (!w.prices['TAIEX']) w.prices['TAIEX'] = {};
-        if (wp.mon != null) { w.prices['TAIEX'].mon = wp.mon; tFilled++; }
-        if (wp.fri != null) { w.prices['TAIEX'].fri = wp.fri; tFilled++; }
-      });
-      if (tFilled > 0) success++; else fail++;
-    } else { fail++; }
-  } catch(e) { console.warn('TAIEX fetch failed', e); fail++; }
-
-  // 每檔股票：一次 API 請求把所有目標週的資料拉回來
-  // 注意：不依 stockVisibleInWeek 過濾！新股票的價格資料仍要存到前幾週，
-  // 這樣在本週檢視時把報酬區間拉長才能正確計算。表格顯示的過濾是另一層處理。
-  for (let i = 0; i < stocks.length; i++) {
-    const s = stocks[i];
-    statusEl.textContent = `正在抓取 ${s.code} ${s.name} (${i+1}/${stocks.length}, ${targetWeeks.length} 週)...`;
-    try {
-      const result = await backfillStockPrices(s.code, s.market, targetWeeks);
-      if (result && result.filled > 0) { success++; } else { fail++; }
-    } catch(e) {
-      console.warn(`Fetch failed for ${s.code}`, e);
-      fail++;
-    }
-    await sleep(1200);
+async function loadPriceHistory(force) {
+  if (priceHistoryMap && !force && Date.now() - priceHistoryLoadedAt < 5 * 60000) {
+    return priceHistoryMap;
   }
-
-  saveData();
-  btn.disabled = false;
-  btn.innerHTML = '&#x1f504; 自動抓取收盤價 (含前 4 週)';
-  statusEl.textContent = `完成！成功 ${success} 檔，失敗 ${fail} 檔（共更新 ${targetWeeks.length} 週）${fail > 0 ? '，失敗的請手動輸入' : ''}`;
-  showToast(`抓取完成：成功 ${success}，失敗 ${fail}（${targetWeeks.length} 週）`, fail > 0 ? 'error' : 'success');
-}
-
-const CORS_PROXIES = [
-  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  u => `https://cors-anywhere.herokuapp.com/${u}`
-];
-
-async function fetchViaProxy(url, timeoutMs) {
-  const timeout = timeoutMs || 15000; // 預設 15 秒超時
-  let lastErr = null;
-  for (const makeUrl of CORS_PROXIES) {
-    try {
-      const proxied = makeUrl(url);
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      const resp = await fetch(proxied, { cache: 'no-store', signal: controller.signal });
-      clearTimeout(timer);
-      if (!resp.ok) { lastErr = new Error(`HTTP ${resp.status}`); continue; }
-      const text = await resp.text();
-      if (!text || text.trim().length === 0) { lastErr = new Error('Empty response'); continue; }
-      try {
-        return JSON.parse(text);
-      } catch(e) { lastErr = new Error('Invalid JSON: ' + text.slice(0,100)); continue; }
-    } catch(e) { lastErr = e; continue; }
-  }
-  throw lastErr || new Error('All proxies failed');
+  const resp = await fetch(PRICE_HISTORY_URL + '?t=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  priceHistoryMap = await resp.json();
+  priceHistoryLoadedAt = Date.now();
+  return priceHistoryMap;
 }
 
 // 從日期 map 中挑出一週的「首個交易日開盤」與「末個交易日收盤」
@@ -1993,58 +1878,29 @@ function extractWeekPricesFromMap(map, startDate, endDate) {
   };
 }
 
-// 抓一個較長的日期區間，回傳 { 'YYYY-MM-DD': {open, close}, ... }
-async function fetchYahooDateMap(symbol, fromDate, toDate) {
-  const startUnix = Math.floor(new Date(fromDate).getTime() / 1000) - 86400 * 3;
-  const endUnix = Math.floor(new Date(toDate).getTime() / 1000) + 86400 * 3;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${startUnix}&period2=${endUnix}&interval=1d`;
-  console.log(`[fetch-range] ${symbol} ${fromDate}~${toDate} -> ${url}`);
-  const data = await fetchViaProxy(url);
-  const result = data?.chart?.result?.[0];
-  if (!result) return null;
-  const timestamps = result.timestamp || [];
-  const quote = result.indicators?.quote?.[0] || {};
-  const opens = quote.open || [];
-  const closes = quote.close || [];
-  const map = {};
-  for (let i = 0; i < timestamps.length; i++) {
-    if (opens[i] == null && closes[i] == null) continue;
-    const d = new Date(timestamps[i] * 1000);
-    const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-    map[key] = {
-      open: opens[i] != null ? Math.round(opens[i] * 100) / 100 : null,
-      close: closes[i] != null ? Math.round(closes[i] * 100) / 100 : null
-    };
-  }
-  return map;
-}
-
 // 一次抓多週的收盤價並回填到 appData.weeks（只針對單一股票代號）
-// 會自動處理上市/上櫃 fallback 與國定假日
+// 資料來源改為本地已載入的 price_history.json，若股票市場類型（tse/otc）跟
+// fetch_prices.py 實際抓到資料的市場不同，會自動修正 stock.market（沿用舊行為）。
 async function backfillStockPrices(code, market, weeks) {
   if (!weeks || weeks.length === 0) return { filled: 0 };
-  // 找出最早與最晚的日期
-  const fromDate = weeks.reduce((m, w) => w.startDate < m ? w.startDate : m, weeks[0].startDate);
-  const toDate = weeks.reduce((m, w) => w.endDate > m ? w.endDate : m, weeks[0].endDate);
-
-  const primary = market === 'otc' ? `${code}.TWO` : `${code}.TW`;
-  const fallback = market === 'otc' ? `${code}.TW` : `${code}.TWO`;
-  let map = null;
-  try { map = await fetchYahooDateMap(primary, fromDate, toDate); } catch(e) {}
-  if (!map || Object.keys(map).length === 0) {
-    try {
-      map = await fetchYahooDateMap(fallback, fromDate, toDate);
-      if (map && Object.keys(map).length > 0) {
-        const stock = appData.stocks.find(s => s.code === code);
-        if (stock) {
-          stock.market = market === 'otc' ? 'tse' : 'otc';
-          console.log(`[auto-fix] ${code} 市場類型已修正為 ${stock.market}`);
-          showToast(`已自動修正 ${code} 的市場類型`, 'success');
-        }
-      }
-    } catch(e) {}
+  try {
+    await loadPriceHistory();
+  } catch(e) {
+    console.warn('[price] 讀取 price_history.json 失敗', e.message);
+    return { filled: 0 };
   }
+  const map = priceHistoryMap ? priceHistoryMap[code] : null;
   if (!map) return { filled: 0 };
+
+  const actualMarket = priceHistoryMap.__meta?.market?.[code];
+  if (actualMarket && actualMarket !== market) {
+    const stock = appData.stocks.find(s => s.code === code);
+    if (stock) {
+      stock.market = actualMarket;
+      console.log(`[auto-fix] ${code} 市場類型已修正為 ${actualMarket}`);
+      showToast(`已自動修正 ${code} 的市場類型`, 'success');
+    }
+  }
 
   let filled = 0;
   weeks.forEach(w => {
@@ -2058,44 +1914,61 @@ async function backfillStockPrices(code, market, weeks) {
   return { filled };
 }
 
-// 用 Yahoo Finance API，上市/上櫃/指數統一格式
-// 自動處理國定假日：首個交易日當週一、末個交易日當週五
-async function fetchYahooClose(symbol, startDate, endDate) {
-  const map = await fetchYahooDateMap(symbol, startDate, endDate);
-  if (!map) return null;
-  const wp = extractWeekPricesFromMap(map, startDate, endDate);
-  return wp;
-}
+async function fetchAllPrices() {
+  const week = appData.weeks[currentWeekIdx];
+  const statusEl = document.getElementById('fetchStatus');
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="fetch-spinner"></span>抓取中...';
+  statusEl.textContent = '正在讀取 price_history.json...';
 
-async function fetchStockPrices(code, market, startDate, endDate) {
-  const primary = market === 'otc' ? `${code}.TWO` : `${code}.TW`;
-  const fallback = market === 'otc' ? `${code}.TW` : `${code}.TWO`;
   try {
-    const r = await fetchYahooClose(primary, startDate, endDate);
-    if (r && (r.mon != null || r.fri != null)) return r;
-  } catch(e) { console.warn(`[fallback] ${primary} failed, trying ${fallback}`, e); }
+    await loadPriceHistory(true); // 強制重新讀取，確保是最新資料
+  } catch(e) {
+    console.warn('[price] 讀取失敗', e.message);
+    btn.disabled = false;
+    btn.innerHTML = '&#x1f504; 自動抓取收盤價 (含前 4 週)';
+    statusEl.textContent = '讀取 price_history.json 失敗，請稍後再試';
+    showToast('讀取價格資料失敗，請確認 GitHub Actions 是否有正常執行', 'error');
+    return;
+  }
 
-  // 主要市場失敗，試另一個市場
-  try {
-    const r2 = await fetchYahooClose(fallback, startDate, endDate);
-    if (r2 && (r2.mon != null || r2.fri != null)) {
-      // 自動修正使用者設錯的市場類型
-      const correctedMarket = market === 'otc' ? 'tse' : 'otc';
-      const stock = appData.stocks.find(s => s.code === code);
-      if (stock) {
-        stock.market = correctedMarket;
-        console.log(`[auto-fix] ${code} 市場類型已修正為 ${correctedMarket}`);
-        showToast(`已自動修正 ${code} 的市場類型`, 'success');
-      }
-      return r2;
-    }
-  } catch(e) { console.warn(`[fallback] ${fallback} also failed`, e); }
+  // 目標週：本週 + 往前最多 4 週（共最多 5 週），讓 2/3/4 週範圍也能正確計算
+  const targetWeeks = appData.weeks.slice(currentWeekIdx, currentWeekIdx + 5);
 
-  return null;
-}
+  // 只抓取在「當前這一週」可見的股票
+  const stocks = appData.stocks.filter(s => s.code !== 'TAIEX' && stockVisibleInWeek(s, week));
+  let success = 0, fail = 0;
 
-async function fetchTaiexPrices(startDate, endDate) {
-  return await fetchYahooClose('%5ETWII', startDate, endDate);
+  // 加權指數
+  const taiexMap = priceHistoryMap ? priceHistoryMap['TAIEX'] : null;
+  if (taiexMap) {
+    let tFilled = 0;
+    targetWeeks.forEach(w => {
+      const wp = extractWeekPricesFromMap(taiexMap, w.startDate, w.endDate);
+      if (!wp) return;
+      if (!w.prices) w.prices = {};
+      if (!w.prices['TAIEX']) w.prices['TAIEX'] = {};
+      if (wp.mon != null) { w.prices['TAIEX'].mon = wp.mon; tFilled++; }
+      if (wp.fri != null) { w.prices['TAIEX'].fri = wp.fri; tFilled++; }
+    });
+    if (tFilled > 0) success++; else fail++;
+  } else { fail++; }
+
+  // 每檔股票：資料已經在本地（priceHistoryMap），不需要逐檔網路請求或 sleep 節流
+  // 注意：不依 stockVisibleInWeek 過濾！新股票的價格資料仍要存到前幾週，
+  // 這樣在本週檢視時把報酬區間拉長才能正確計算。表格顯示的過濾是另一層處理。
+  statusEl.textContent = `正在套用 ${stocks.length} 檔股票的價格資料...`;
+  for (const s of stocks) {
+    const result = await backfillStockPrices(s.code, s.market, targetWeeks);
+    if (result && result.filled > 0) { success++; } else { fail++; }
+  }
+
+  saveData();
+  btn.disabled = false;
+  btn.innerHTML = '&#x1f504; 自動抓取收盤價 (含前 4 週)';
+  statusEl.textContent = `完成！成功 ${success} 檔，失敗 ${fail} 檔（共更新 ${targetWeeks.length} 週）${fail > 0 ? '，失敗的請手動輸入' : ''}`;
+  showToast(`抓取完成：成功 ${success}，失敗 ${fail}（${targetWeeks.length} 週）`, fail > 0 ? 'error' : 'success');
 }
 
 // ======================== EXPORT / IMPORT ========================
