@@ -282,7 +282,7 @@
       "name": "聯發科",
       "group": "watchlist",
       "market": "tse",
-      "reason": "（1）5921明年多10%，18萬片加到20萬片\r\n（2）Q3業績會跟Q2差不多，因為有Pull in的關係加上漲價。Q4業績就會上去\r\n（3）ai6 rfq 量很大。創意的是auto only，聯發科是機器人+automotive\r\n（4）v10最晚10月底會有award的結果\r\n（5）q3 margin不好所以九月份才要漲價補一些回來。tpu margin也不太好\r\n應該會藏一點獲利讓今年毛利率維持46%\r\n（6）dojo/ai6都有rfq，dojo應該沒有award，ai6還在進行中。從收到rfq到award至少兩個季度\r\n（7）ice fish是15 reticle，強迫一定要用emib，所以聯發科希望9x就趕快先練兵\r\n（8）推論 (inference) 一定是給聯發科做，而 V10 的訓練 (training) 才是給 AMD。\r\n（9）之前就有幫cisco開過800g/1.6t的案子，現在有開asic。但應該也不大，可能lifecycle就是1B而已",
+      "reason": "（1）5921明年多10%，18萬片加到20萬片\r\n（2）Q3業績會跟Q2差不多，因為有Pull in的關係加上漲價。Q4業績就會上去\r\n（3）ai6 rfq 量很大。創意的是auto only，聯發科是機器人+automotive\r\n（4）v10最晚10月底會有award的結果\r\n（5）q3 margin不好所以九月份才要漲價補一些回來。tpu margin也不太好\r\n應該會藏一點獲利讓今年毛利率維持46%\r\n（6）dojo/ai6都有rfq，dojo應該沒有award，ai6還在進行中。從收到rfq到award至少兩個季度\r\n（7）ice fish是15 reticle，強迫一定要用emib，所以聯發科希望9x就趕快先練兵\r\n（8）推論 (inference) 一定是給聯發科做，而 V10 的訓練 (training) 才是給 AMD。\r\n（9）之前就有幫cisco開過800g/1.6t的案子，現在有開asic。但應該也不大，可能lifecycle就是1B而已\r\n（10）拿到一個中國客戶的案子，量非常大，明年可以貢獻約300-400億，後年上千億",
       "recommender": "Jack Lu",
       "addedWeekStart": "2026-04-13",
       "targetType": "業績"
@@ -1343,6 +1343,17 @@
       "reportDate": "2026/8/25",
       "targetType": "故事",
       "addedWeekStart": "2026-08-31"
+    },
+    {
+      "code": "8227",
+      "name": "巨有",
+      "group": "watchlist",
+      "market": "otc",
+      "reason": "（1）AlphaWave單子外溢\r\n（2）可以貢獻巨有一倍的營收",
+      "recommender": "Jack 鄭",
+      "reportDate": "2026/9/8",
+      "targetType": "故事",
+      "addedWeekStart": "2026-09-07"
     }
   ],
   "weeks": [
@@ -1450,7 +1461,8 @@
         "2383",
         "2449"
       ],
-      "topVotes": []
+      "topVotes": [],
+      "weekNote": "本週更新：巨有 聯發科"
     },
     {
       "id": "w2026-08-31",
@@ -15686,7 +15698,7 @@
       ]
     }
   ],
-  "lastModified": 1789296130273,
+  "lastModified": 1789296159770,
   "brokerChipsMonth": {
     "period": "2026-06-23/2026-07-23",
     "stocks": {
