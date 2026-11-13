@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>櫃買盤中監控</title><style>html,body{margin:0;background:#10151f}</style></head>
+<body><script>
+(function(){
+if(window.__OTCMON&&window.__OTCMON.stop)window.__OTCMON.stop();
+const API=p=>`https://tw.stock.yahoo.com/_td-stock/api/resource/FinanceChartService.ApacLibraCharts;period=${p};symbols=%5B%22%5ETWOII%22%5D?bkt=&device=desktop&lang=zh-Hant-TW&region=TW`;
+const prevM=window.__OTCMON||{};
+const M={triggers:[],fired:{},log:[],timer:null,b5:[],b60:[],bd:[],nowOverride:null,audio:prevM.audio||null,hl:null,pt:prevM.pt||'mine',ptSet:prevM.ptSet||false,levels:[],planDay:null,
+  tf:prevM.tf||'m',view:prevM.view||{d:null,h:null,m:null},maOn:prevM.maOn||{5:true,10:true,20:true,60:true,240:true},hover:null};
+window.__OTCMON=M;
+async function get(p){const c=(await fetch(API(p)).then(r=>r.json()))[0].chart;const q=c.indicators.quote[0];
+  return c.timestamp.map((t,i)=>({t:t+8*3600,o:q.open[i],h:q.high[i],l:q.low[i],c:q.close[i]})).filter(b=>b.c!=null);}
+const D=t=>new Date(t*1000).toISOString();const hm=t=>D(t).slice(11,16);const dd=t=>D(t).slice(5,10);const ymd=t=>D(t).slice(0,10);
+const nowTs=()=>M.nowOverride!=null?M.nowOverride:Math.floor(Date.now()/1000)+8*3600;
+function ma(arr,n,i){if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=arr[k].c;return s/n;}
+const MAS=[5,10,20,60,240],MACOL={5:'#ffb238',10:'#5aa7ff',20:'#c77dff',60:'#3fd1c1',240:'#c9a27a'};
+function ctx(){
+  const now=nowTs();
+  const all5=M.b5.filter(b=>b.t-300<now),all60=M.b60.filter(b=>(hm(b.t)==='13:30'?b.t-1800:b.t-3600)<now);
+  const closed5=all5.filter(b=>b.t<=now),closed60=all60.filter(b=>b.t<=now);
+  const day=dd(all5.length?all5[all5.length-1].t:now);
+  const today=all5.filter(b=>dd(b.t)===day);
+  const last=all5.length?all5[all5.length-1].c:null;
+  const C={now,hm:hm(now),day,last,fired:id=>!!M.fired[id],b5:closed5,b60:closed60,live5:all5,live60:all60,today,
+    dayHigh:Math.max(...today.map(b=>b.h)),dayLow:Math.min(...today.map(b=>b.l)),
+    ma5:(n,back=0)=>ma(closed5,n,closed5.length-1-back),
+    ma60:(n,back=0)=>ma(closed60,n,closed60.length-1-back),
+    bar5:(back=0)=>closed5[closed5.length-1-back],
+    bar60:(back=0)=>closed60[closed60.length-1-back],
+    up5:n=>{const a=C.ma5(n),b=C.ma5(n,1);return a!=null&&b!=null&&a>b},
+    up60:n=>{const a=C.ma60(n),b=C.ma60(n,1);return a!=null&&b!=null&&a>b},
+    red:b=>b&&b.c>b.o, black:b=>b&&b.c<b.o,
+    reds5Above:(k,n)=>{for(let j=0;j<k;j++){const b=C.bar5(j);const m=C.ma5(n,j);if(!b||m==null||!(b.c>b.o&&b.c>m))return false}return true},
+    blacks5Below:(k,n)=>{for(let j=0;j<k;j++){const b=C.bar5(j);const m=C.ma5(n,j);if(!b||m==null||!(b.c<b.o&&b.c<m))return false}return true},
+    touchedAtOrBelow:p=>today.some(b=>b.l<=p), touchedAtOrAbove:p=>today.some(b=>b.h>=p),
+    before:s=>hm(now)<s, after:s=>hm(now)>=s
+  };return C;}
+// ---------- UI
+const css=`#otcmon{position:fixed;inset:0;z-index:2147483646;background:#10151f;color:#e6eaf2;font:14px/1.5 "PingFang TC","Noto Sans TC",sans-serif;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;padding:12px;box-sizing:border-box}
+#otcmon *{box-sizing:border-box}#otcmon h1{font-size:18px;margin:0}#otcmon .px{font:600 28px "IBM Plex Mono",Menlo,monospace}
+#otcmon .up{color:#ff5a65}#otcmon .dn{color:#2fc07f}#otcmon .mut{color:#93a0b5;font-size:12px}
+#otcmon .card{background:#171e2b;border:1px solid #2a3446;border-radius:10px;padding:10px 12px}
+#otcmon canvas{width:100%;height:100%;display:block;cursor:crosshair}#otcmon .tr{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #2a3446}
+#otcmon .dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none;background:#3a4558}#otcmon .tr.on .dot{background:#ffb238;box-shadow:0 0 8px #ffb238}
+#otcmon button{background:#2b5fd9;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:14px;cursor:pointer}
+#otcmon .seg{display:inline-flex;background:#212a3a;border-radius:8px;padding:3px}#otcmon .seg button{background:transparent;color:#93a0b5;padding:5px 14px;border-radius:6px}
+#otcmon .seg button.on{background:#171e2b;color:#e6eaf2;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+#otcmon .mas{display:flex;gap:6px;flex-wrap:wrap}#otcmon .mas label{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;border:1px solid #2a3446;border-radius:999px;padding:3px 9px;cursor:pointer}
+#otcmon .mas input{margin:0}#otcmon .sw{width:12px;height:3px;border-radius:2px;display:inline-block}
+#otcmon .rng{display:flex;gap:6px;align-items:center;flex-wrap:wrap}#otcmon .rng button{background:#212a3a;color:#c9d2e3;padding:4px 10px;font-size:12.5px;border-radius:6px}#otcmon .rng input{background:#212a3a;color:#e6eaf2;border:1px solid #2a3446;border-radius:6px;padding:3px 6px;font-size:12.5px;color-scheme:dark}#otcmon .tr{cursor:pointer;border-radius:6px;transition:background .12s}#otcmon .tr:hover,#otcmon .tr.hl{background:#24304a;box-shadow:inset 3px 0 0 #ffd23f}#otcmon .trh{margin:10px 0 2px;padding:3px 8px;font-size:12px;font-weight:700;color:#c9d2e3;background:#212a3a;border-radius:6px;cursor:pointer}#otcmon .trh.cur{color:#10151f;background:#7aa2ff}#otcmon .ptabs{display:flex;gap:4px;margin-bottom:6px}#otcmon .ptabs button{flex:1;background:#212a3a;color:#93a0b5;padding:6px 8px;font-size:13px;border-radius:6px}#otcmon .ptabs button.on{background:#2b5fd9;color:#fff}#otcmon .tr.both{box-shadow:inset 3px 0 0 #3fd1c1}#otcmon .tr.diff{box-shadow:inset 3px 0 0 #ff9f43}#otcmon .both-badge.cf{background:#ff9f43}#otcmon .both-badge{display:inline-block;font-size:11px;font-weight:700;color:#10151f;background:#3fd1c1;border-radius:4px;padding:0 5px;margin-right:6px;vertical-align:1px}#otcmon .score{background:#121925;border:1px solid #2a3446;border-radius:8px;padding:8px 10px;margin-bottom:8px;display:grid;gap:5px}#otcmon .sr{display:grid;grid-template-columns:64px 1fr auto;gap:8px;align-items:center;font-size:12.5px}#otcmon .sbar{height:8px;background:#212a3a;border-radius:4px;overflow:hidden}#otcmon .sbar i{display:block;height:100%}#otcmon .sv{font-size:12.5px;font-weight:700;color:#e6eaf2}#otcmon .trs{font-size:11.5px;font-weight:700;margin:6px 0 0 2px}#otcmon .trs.bull{color:#ff5a65}#otcmon .trs.bear{color:#2fc07f}#otcmon .trs.warn{color:#ffb238}@media (max-width:820px){#otcmon{grid-template-columns:1fr!important;grid-template-rows:62vh auto!important;overflow:auto}}#otcmon .banner{background:#ffb238;color:#10151f;border-radius:8px;padding:10px 12px;font-weight:700;display:none}
+#otcmon .log div{font-family:Menlo,monospace;font-size:12px;padding:2px 0}
+#otcmon #om-leg{position:absolute;left:12px;top:6px;right:80px;display:flex;flex-wrap:wrap;gap:2px 10px;font:12px Menlo,monospace;pointer-events:none}`;
+document.querySelectorAll('#otcmon,#otcmon-style').forEach(e=>e.remove());
+const st=document.createElement('style');st.id='otcmon-style';st.textContent=css;document.head.appendChild(st);
+const root=document.createElement('div');root.id='otcmon';
+root.innerHTML=`<div style="display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:10px;min-width:0">
+ <div class="card" style="display:flex;gap:16px;align-items:baseline;flex-wrap:wrap"><h1>櫃買盤中監控</h1><span class="px" id="om-px">—</span><span id="om-chg"></span><span class="mut" id="om-st">尚未開始</span><span style="margin-left:auto"><span class="mut">唯讀分享版・盤中約每分鐘更新</span></span></div>
+ <div style="display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;justify-content:space-between"><div class="seg"><button data-tf="d">日K</button><button data-tf="h">60分K</button><button data-tf="m">5分K</button></div><div class="rng" id="om-rng"></div><div class="mas" id="om-mas"></div></div>
+ <div class="banner" id="om-banner"></div>
+ <div class="card" style="min-height:0;position:relative;padding:0"><div id="om-leg"></div><canvas id="om-cv"></canvas></div></div>
+ <div style="display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0">
+ <div class="card" style="overflow:auto;max-height:60vh"><div style="font-weight:700;margin-bottom:4px">今日條件</div><div id="om-trs"></div></div>
+ <div class="card log" style="overflow:auto"><div style="font-weight:700;margin-bottom:4px">觸發紀錄</div><div id="om-log"></div></div></div>`;
+document.body.appendChild(root);
+const $=id=>root.querySelector('#'+id);
+MAS.forEach(n=>{const lb=document.createElement('label');lb.innerHTML=`<input type="checkbox" ${M.maOn[n]?'checked':''}><span class="sw" style="background:${MACOL[n]}"></span>${n}T`;
+  lb.querySelector('input').addEventListener('change',e=>{M.maOn[n]=e.target.checked;draw()});$('om-mas').appendChild(lb)});
+root.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{M.tf=b.dataset.tf;M.hover=null;segUI();draw();renderTriggers()}));
+const RANGES={d:[['1個月',22],['3個月',66],['6個月',130],['今年',null]],h:[['1週',25],['1個月',110],['全部','all']],m:[['1天',54],['2天',108],['全部','all']]};
+function segUI(){root.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.tf===M.tf));const box=$('om-rng');box.innerHTML='';RANGES[M.tf].forEach(([t,v])=>{const b=document.createElement('button');b.textContent=t;b.addEventListener('click',()=>{if(v===null){M.view[M.tf]=null}else{const n=v==='all'?(geom?geom.all.length:9999):v;M.view[M.tf]={n,end:1e9,follow:true}}draw()});box.appendChild(b)});const lb=document.createElement('span');lb.className='mut';lb.textContent='跳到';box.appendChild(lb);const di=document.createElement('input');di.type='date';di.addEventListener('change',()=>{if(!geom||!di.value)return;const idx=geom.all.findIndex(b=>ymd(b.t)>=di.value);if(idx<0)return;const n=geom.vis.length;M.view[M.tf]={n,end:Math.min(geom.all.length,idx+Math.round(n/2)),follow:false};draw()});box.appendChild(di);const hint=document.createElement('span');hint.className='mut';hint.textContent='拖曳平移・滾輪縮放・雙擊還原';box.appendChild(hint)}segUI();
+const pxOf=s=>(s.match(/\d{3}\.\d{1,2}/g)||[]).map(Number);const keyOf=s=>{const k=[];const r=s.replace(/\s/g,'');(r.match(/(5K|60K|日K)\d+T/g)||[]).forEach(x=>k.push(x));if(/連2根5K紅/.test(r))k.push('R2');if(/連2根5K黑/.test(r))k.push('B2');return k};const matchOf=t=>{const me=t.src||'mine';const others=M.triggers.filter(o=>(o.src||'mine')!==me);const p=pxOf(t.label),k=keyOf(t.label);for(const o of others){const op=pxOf(o.label),ok=keyOf(o.label);const pm=p.some(a=>op.some(b=>Math.abs(a-b)<=1.0));const km=o.kind===t.kind&&k.filter(x=>x==='R2'||x==='B2').some(x=>ok.includes(x))&&k.filter(x=>/T$/.test(x)).some(x=>ok.includes(x));if(pm||km){const cf=(t.kind==='bull'&&o.kind==='bear')||(t.kind==='bear'&&o.kind==='bull');const r={l:o.label.replace('【我的】',''),cf};if(!cf)return r;t.__cf=t.__cf||r}}const c=t.__cf;delete t.__cf;return c||null};const trTf=t=>t.tf||(/第一根60K|60K收/.test(t.label)?'h':/5K[紅黑收]|根5K|5K\d+T/.test(t.label)?'m':/日K/.test(t.label)?'d':'h');function renderTriggers(){$('om-trs').innerHTML='';const tabs=document.createElement('div');tabs.className='ptabs';[['mine','我的條件'],['author','作者規劃']].forEach(([k,n])=>{const b=document.createElement('button');const cnt=M.triggers.filter(t=>(t.src||'mine')===k).length;const fc=M.triggers.filter(t=>(t.src||'mine')===k&&M.fired[t.id]).length;b.textContent=n+'（'+fc+'/'+cnt+'）';b.className=M.pt===k?'on':'';b.addEventListener('click',()=>{M.pt=k;M.ptSet=true;M.hl=null;renderTriggers();renderLog();draw()});tabs.appendChild(b)});$('om-trs').appendChild(tabs);{const mine=M.triggers.filter(t=>(t.src||'mine')===M.pt);const st=k=>{const a=mine.filter(t=>t.kind===k);return [a.filter(t=>M.fired[t.id]).length,a.length]};const [bf,bt]=st('bull'),[sf,stt]=st('bear');const bp=bt?bf/bt:0,sp=stt?sf/stt:0;const sb=document.createElement('div');sb.className='score';const bar=(n,f,t,p,c)=>`<div class="sr"><span>${n}</span><div class="sbar"><i style="width:${Math.round(p*100)}%;background:${c}"></i></div><b style="color:${c}">${f}/${t}　${Math.round(p*100)}%</b></div>`;let v='還沒有劇本條件發生';if(bf||sf){v=bp-sp>=0.2?'偏多劇本發生得比較多':sp-bp>=0.2?'偏空劇本發生得比較多':'多空拉鋸中'}const lastF=M.log.filter(l=>String(l.id).startsWith(M.pt+':')&&(l.kind==='bull'||l.kind==='bear')).slice(-1)[0];sb.innerHTML=bar('偏多劇本',bf,bt,bp,'#ff5a65')+bar('偏空劇本',sf,stt,sp,'#2fc07f')+`<div class="sv">${v}${lastF?'｜最新：'+lastF.hm+' '+(lastF.kind==='bull'?'偏多':'偏空')+' @ '+lastF.px.toFixed(2):''}</div>`;if(mine.length)$('om-trs').appendChild(sb)}const TFN={d:'日K',h:'60分K',m:'5分K'};['d','h','m'].forEach(k=>{const grp=M.triggers.filter(t=>(t.src||'mine')===M.pt&&trTf(t)===k);if(!grp.length)return;const hd=document.createElement('div');hd.className='trh'+(M.tf===k?' cur':'');hd.textContent=TFN[k]+'（'+grp.length+'）';hd.title='點一下切到'+TFN[k];hd.addEventListener('click',()=>{M.tf=k;M.hover=null;segUI();draw();renderTriggers()});$('om-trs').appendChild(hd);const KO={bull:0,bear:1,warn:2};grp.sort((a,b)=>(KO[a.kind]??2)-(KO[b.kind]??2));let lastK=null;grp.forEach(t=>{const kk=KO[t.kind]!==undefined?t.kind:'warn';if(kk!==lastK){lastK=kk;const sh=document.createElement('div');sh.className='trs '+kk;const same=grp.filter(x=>(KO[x.kind]!==undefined?x.kind:'warn')===kk);sh.textContent=({bull:'▲ 偏多',bear:'▼ 偏空',warn:'● 提醒'})[kk]+'（'+same.filter(x=>M.fired[x.id]).length+'/'+same.length+'）';$('om-trs').appendChild(sh)}const d=document.createElement('div');d.className='tr'+(M.fired[t.id]?' on':'')+(M.hl===t.id?' hl':'');
+  d.innerHTML=`<span class="dot"></span><div><div></div><div class="mut"></div></div>`;d.querySelector(':scope>div>div').textContent=t.label;
+  d.querySelector('.mut').textContent=M.fired[t.id]?('已觸發 '+M.fired[t.id].hm+' @ '+M.fired[t.id].px.toFixed(2)):(t.kind==='bull'?'偏多條件':t.kind==='bear'?'偏空條件':'提醒');const mt=matchOf(t);if(mt){d.classList.add(mt.cf?'diff':'both');const bg=document.createElement('span');bg.className='both-badge'+(mt.cf?' cf':'');bg.textContent=mt.cf?'同價位・看法不同':'兩邊一致';d.querySelector(':scope>div>div').prepend(bg);const ex=document.createElement('div');ex.className='mut';ex.textContent=(t.src==='author'?'我的：':'作者：')+mt.l;d.querySelector(':scope>div').appendChild(ex)}d.title='點一下跳到'+({d:'日K',h:'60分K',m:'5分K'})[trTf(t)];d.addEventListener('click',()=>{M.tf=trTf(t);M.hover=null;M.hl=t.id;segUI();renderTriggers();draw()});d.addEventListener('mouseenter',()=>{M.hl=t.id;root.querySelectorAll('#om-trs .tr').forEach(e=>e.classList.remove('hl'));d.classList.add('hl');draw()});$('om-trs').appendChild(d)})});if(!M.triggers.some(t=>(t.src||'mine')===M.pt)){const e=document.createElement('div');e.className='mut';e.style.padding='8px 0';e.textContent=M.pt==='author'?'今天還沒有作者規劃，早上貼給 Claude 就會出現在這裡':'今天還沒有我的條件';$('om-trs').appendChild(e)}$('om-trs').onmouseleave=()=>{M.hl=null;root.querySelectorAll('#om-trs .tr').forEach(e=>e.classList.remove('hl'));draw()};}
+function renderLog(){$('om-log').innerHTML='';M.log.slice().reverse().forEach(l=>{const d=document.createElement('div');d.textContent=`${l.hm} ${l.px.toFixed(2)} ${String(l.id).startsWith('author:')?'[作者]':'[我]'} ${l.label}`;d.style.color=l.kind==='bull'?'#ff5a65':l.kind==='bear'?'#2fc07f':'#ffb238';$('om-log').appendChild(d)});}
+// ---------- chart
+let geom=null;
+function series(){const C=ctx();
+  if(M.tf==='m'){const all=C.live5;const days=[...new Set(all.map(b=>dd(b.t)))].slice(-2);const s=all.findIndex(b=>days.includes(dd(b.t)));return {all,start:s<0?0:s,lab:b=>hm(b.t),sep:(a,b)=>dd(a.t)!==dd(b.t),sepLab:b=>dd(b.t).replace('-','/'),C}}
+  if(M.tf==='h'){const all=C.live60;return {all,start:Math.max(0,all.length-150),lab:b=>dd(b.t).replace('-','/')+' '+hm(b.t),sep:(a,b)=>dd(a.t).slice(0,2)!==dd(b.t).slice(0,2),sepLab:b=>(+dd(b.t).slice(0,2))+'月',C}}
+  let all=M.bd.slice();const lastD=all.length?ymd(all[all.length-1].t):'';const tday=C.today;
+  if(tday.length&&ymd(tday[0].t)>lastD){all.push({t:tday[0].t,o:tday[0].o,h:Math.max(...tday.map(b=>b.h)),l:Math.min(...tday.map(b=>b.l)),c:tday[tday.length-1].c})}
+  const s=all.findIndex(b=>ymd(b.t)>='2026-01-01');
+  return {all,start:s<0?0:s,lab:b=>ymd(b.t).replace(/-/g,'/'),sep:(a,b)=>ymd(a.t).slice(0,7)!==ymd(b.t).slice(0,7),sepLab:b=>(+ymd(b.t).slice(5,7))+'月',C}}
+function draw(){
+  const cv=$('om-cv'),r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;if(!r.width)return;cv.width=r.width*dpr;cv.height=r.height*dpr;
+  const g=cv.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,r.width,r.height);
+  const S=series();const all=S.all;const LV=M.levels.filter(l=>(l.src||'mine')===M.pt&&(l.tf||(/5K/.test(l.n)?'m':/日K|日線|週K/.test(l.n)?'d':'h'))===M.tf);const HT=M.hl?M.triggers.find(t=>t.id===M.hl):null;const tfk={m:'5K',h:'60K',d:'日K'}[M.tf];const hlMA={};const hlP=[];if(HT){[5,10,20,60,240].forEach(n=>{if(HT.label.includes(tfk+n+'T'))hlMA[n]=1});(HT.label.match(/\d{3}\.\d{1,2}(\s*[～~]\s*\d{3}\.\d{1,2})?/g)||[]).forEach(s=>hlP.push(s.split(/[～~]/).map(x=>parseFloat(x))))}if(!all.length){geom=null;return}
+  const V=M.view[M.tf];let n=V?V.n:all.length-S.start;n=Math.max(15,Math.min(all.length,n));let end=V&&!V.follow?V.end:all.length;end=Math.max(n,Math.min(all.length,end));const off=end-n;const vis=all.slice(off,end);
+  const mav={};MAS.forEach(n=>{if(M.maOn[n])mav[n]=vis.map((b,i)=>ma(all,n,off+i))});
+  let lo=Math.min(...vis.map(b=>b.l)),hi=Math.max(...vis.map(b=>b.h));
+  Object.values(mav).forEach(a=>a.forEach(v=>{if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}));
+  LV.forEach(l=>{if(l.p>lo-8&&l.p<hi+8){lo=Math.min(lo,l.p);hi=Math.max(hi,l.p)}});hlP.forEach(v=>v.forEach(p=>{if(p>lo-15&&p<hi+15){lo=Math.min(lo,p);hi=Math.max(hi,p)}}));
+  const pad=(hi-lo)*0.06;lo-=pad;hi+=pad;
+  const L=8,R=r.width-64,T=40,B=r.height-22,W=(R-L)/Math.max(vis.length,V?15:(M.tf==='m'?108:60));
+  const y=p=>T+(hi-p)/(hi-lo)*(B-T);const x=i=>L+W*i+W/2;
+  geom={L,R,T,B,W,vis,off,all,lab:S.lab,y,x,lo,hi};
+  g.font='11px Menlo,monospace';g.strokeStyle='#2a3446';g.lineWidth=1;g.fillStyle='#93a0b5';
+  for(let k=0;k<=5;k++){const p=lo+(hi-lo)*k/5;g.beginPath();g.moveTo(L,y(p));g.lineTo(R,y(p));g.stroke();g.fillText(p.toFixed(1),R+6,y(p)+4)}
+  vis.forEach((b,i)=>{if(i>0&&S.sep(vis[i-1],b)){g.strokeStyle='#3a4558';g.beginPath();g.moveTo(x(i)-W/2,T);g.lineTo(x(i)-W/2,B);g.stroke();g.fillStyle='#93a0b5';g.fillText(S.sepLab(b),x(i)-W/2+3,B+15)}});
+  LV.forEach(l=>{if(l.p<lo||l.p>hi)return;g.strokeStyle=l.c||'#93a0b5';g.setLineDash([4,4]);g.beginPath();g.moveTo(L,y(l.p));g.lineTo(R,y(l.p));g.stroke();g.setLineDash([]);g.fillStyle=l.c||'#93a0b5';g.fillText(l.n+' '+l.p.toFixed(1),L+4,y(l.p)-3)});
+  vis.forEach((b,i)=>{const col=b.c>=b.o?'#ff5a65':'#2fc07f';g.strokeStyle=col;g.fillStyle=col;g.beginPath();g.moveTo(x(i),y(b.h));g.lineTo(x(i),y(b.l));g.stroke();
+    const y1=y(Math.max(b.o,b.c)),y2=y(Math.min(b.o,b.c));g.fillRect(x(i)-Math.max(0.5,W*0.35),y1,Math.max(1,W*0.7),Math.max(1,y2-y1))});
+  Object.entries(mav).forEach(([n,arr])=>{g.strokeStyle=MACOL[n];g.lineWidth=hlMA[n]?3.6:(n==='240'?2:1.4);g.beginPath();let s=false;arr.forEach((v,i)=>{if(v==null)return;s?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v));s=true});g.stroke();g.lineWidth=1});
+  // 觸發標記：對應到所在週期的K棒
+  M.log.forEach(l=>{if(!String(l.id).startsWith(M.pt+':'))return;let i=-1;if(M.tf==='d')i=vis.findIndex(b=>ymd(b.t)===ymd(l.barT));else i=vis.findIndex(b=>b.t>=l.barT);if(i<0)return;
+    const col=l.kind==='bull'?'#ff5a65':l.kind==='bear'?'#2fc07f':'#ffb238';g.fillStyle=col;g.beginPath();g.arc(x(i),y(l.px),5,0,Math.PI*2);g.fill();g.font='bold 11px sans-serif';g.fillText(l.short||'!',x(i)+6,y(l.px)-6);g.font='11px Menlo,monospace'});
+  // 十字線
+  if(HT){g.save();hlP.forEach(v=>{const a=Math.min(...v),b=Math.max(...v);if(b<lo||a>hi)return;const ya=y(b),yb=y(a);g.fillStyle='rgba(255,210,63,0.20)';g.fillRect(L,ya-2,R-L,Math.max(4,yb-ya+4));g.strokeStyle='#ffd23f';g.lineWidth=2.5;g.beginPath();g.moveTo(L,ya);g.lineTo(R,ya);g.stroke();if(v.length>1){g.beginPath();g.moveTo(L,yb);g.lineTo(R,yb);g.stroke()}g.fillStyle='#ffd23f';g.font='bold 13px sans-serif';const tx=v.map(p=>p.toFixed(2)).join('～');g.fillText(tx,R-g.measureText(tx).width-6,ya-6)});const f=M.fired[HT.id];if(f){const i=M.tf==='d'?vis.findIndex(b=>ymd(b.t)===ymd(f.barT)):vis.findIndex(b=>b.t>=f.barT);if(i>=0){g.strokeStyle='#ffd23f';g.lineWidth=2;g.setLineDash([4,3]);g.beginPath();g.moveTo(x(i),T);g.lineTo(x(i),B);g.stroke();g.setLineDash([]);g.beginPath();g.arc(x(i),y(f.px),10,0,Math.PI*2);g.stroke();g.fillStyle='#ffd23f';g.font='bold 12px sans-serif';g.fillText(f.hm+' 觸發 @ '+f.px.toFixed(2),x(i)+14,y(f.px)+20)}}g.font='bold 12px sans-serif';const tt='▶ '+HT.label;const tw=Math.min(g.measureText(tt).width,R-L-12);g.fillStyle='rgba(16,21,31,0.9)';g.fillRect(L+4,B-26,tw+12,22);g.fillStyle='#ffd23f';g.fillText(tt,L+10,B-10,R-L-24);g.restore();g.font='11px Menlo,monospace';g.lineWidth=1}
+const hi_=M.hover!=null&&M.hover<vis.length?M.hover:vis.length-1;
+  if(M.hover!=null){g.strokeStyle='#93a0b5';g.setLineDash([2,3]);g.beginPath();g.moveTo(x(hi_),T);g.lineTo(x(hi_),B);g.stroke();g.setLineDash([])}
+  const b=vis[hi_],col=b.c>=b.o?'#ff5a65':'#2fc07f';
+  let h=`<span style="color:#93a0b5">${S.lab(b)}</span><span style="color:${col}">開 ${b.o.toFixed(2)} 高 ${b.h.toFixed(2)} 低 ${b.l.toFixed(2)} 收 ${b.c.toFixed(2)}</span>`;
+  MAS.forEach(n=>{if(M.maOn[n]){const v=ma(all,n,off+hi_);if(v!=null)h+=`<span style="color:${MACOL[n]}">${n}T ${v.toFixed(2)}</span>`}});
+  $('om-leg').innerHTML=h;
+}
+const cvEl=$('om-cv');
+cvEl.addEventListener('mousemove',e=>{if(!geom)return;const r=cvEl.getBoundingClientRect();const i=Math.floor((e.clientX-r.left-geom.L)/geom.W);M.hover=Math.max(0,Math.min(geom.vis.length-1,i));draw()});
+cvEl.addEventListener('mouseleave',()=>{M.hover=null;draw()});
+cvEl.addEventListener('wheel',e=>{if(!geom)return;e.preventDefault();const g=geom,r=cvEl.getBoundingClientRect();const fx=Math.max(0,Math.min(1,(e.clientX-r.left-g.L)/(g.R-g.L)));const n=g.vis.length;const nn=Math.max(15,Math.min(g.all.length,Math.round(n*(e.deltaY>0?1.15:1/1.15))));let end=Math.round(g.off+fx*n-fx*nn)+nn;end=Math.max(nn,Math.min(g.all.length,end));M.view[M.tf]={n:nn,end,follow:end>=g.all.length};draw()},{passive:false});
+let drag=null;cvEl.addEventListener('mousedown',e=>{if(!geom)return;drag={x:e.clientX,end:geom.off+geom.vis.length,n:geom.vis.length};cvEl.style.cursor='grabbing'});
+window.addEventListener('mouseup',()=>{drag=null;cvEl.style.cursor=''});
+cvEl.addEventListener('mousemove',e=>{if(!drag||!geom)return;const d=Math.round((e.clientX-drag.x)/geom.W);let end=drag.end-d;end=Math.max(drag.n,Math.min(geom.all.length,end));M.view[M.tf]={n:drag.n,end,follow:end>=geom.all.length};draw()});
+cvEl.addEventListener('dblclick',()=>{M.view[M.tf]=null;draw()});
+// ---------- alerting
+function beep(){try{if(!M.audio)return;const a=M.audio,o=a.createOscillator(),gn=a.createGain();o.frequency.value=880;o.connect(gn);gn.connect(a.destination);gn.gain.setValueAtTime(0.25,a.currentTime);gn.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.8);o.start();o.stop(a.currentTime+0.8)}catch(e){}}
+function fire(t,C,msg,silent){const px=C.last;const rec={id:t.id,label:t.label+(msg?'｜'+msg:''),short:t.short,kind:t.kind,hm:C.hm,px,barT:C.live5.length?C.live5[C.live5.length-1].t:C.now};
+  M.fired[t.id]=rec;M.log.push(rec);try{localStorage.setItem('otcmon-log-'+C.day,JSON.stringify(M.log))}catch(e){}
+  if(!silent){beep();const bn=$('om-banner');bn.style.display='block';bn.textContent=`${C.hm}　${t.src==='author'?'【作者】':''}${rec.label}　@ ${px.toFixed(2)}`;
+    document.title='🔔 '+t.label;
+    try{if(window.Notification&&Notification.permission==='granted')new Notification('櫃買監控 '+C.hm,{body:rec.label+' @ '+px.toFixed(2),requireInteraction:true})}catch(e){}}}
+function evaluate(silent){const C=ctx();if(!C.b5.length)return;const armed=!M.planDay||C.day===M.planDay;
+  M.triggers.forEach(t=>{if(!armed||M.fired[t.id])return;let r=false;try{r=t.check(C)}catch(e){r=false}
+    if(r)fire(t,C,typeof r==='string'?r:'',silent)});
+  const pc=M.prevClose;$('om-px').textContent=C.last.toFixed(2);if(pc){const ch=C.last-pc;$('om-chg').textContent=`${ch>=0?'▲':'▼'} ${Math.abs(ch).toFixed(2)} (${(ch/pc*100).toFixed(2)}%)`;$('om-chg').className=ch>=0?'up':'dn';$('om-px').className='px '+(ch>=0?'up':'dn')}
+  renderTriggers();renderLog();draw();}
+let etag=null;async function load(){const gid=new URLSearchParams(location.search).get('g')||window.OTC_GIST;if(!gid)throw new Error('網址缺少資料代碼 ?g=');const r=await fetch('https://api.github.com/gists/'+gid,{headers:etag?{'If-None-Match':etag}:{} ,cache:'no-store'});if(r.status===304)return false;if(r.status===403||r.status===429)throw new Error('GitHub 讀取次數暫時用完，稍後自動重試');if(!r.ok)throw new Error('讀取失敗 '+r.status);etag=r.headers.get('ETag');const j=await r.json();const f=j.files['otc.json'];let txt=f.content;if(f.truncated)txt=await fetch(f.raw_url).then(x=>x.text());const p=JSON.parse(txt);const ub=a=>(a||[]).map(x=>({t:x[0],o:x[1],h:x[2],l:x[3],c:x[4]}));M.b5=ub(p.b5);M.b60=ub(p.b60);M.bd=ub(p.bd);M.prevClose=p.prevClose;M.planDay=p.planDay;M.triggers=(p.triggers||[]).map(t=>Object.assign(t,{check:()=>false}));M.levels=p.levels||[];M.fired=p.fired||{};M.log=p.log||[];M.updated=p.updated;return true}
+async function tick(){try{await load();$('om-st').textContent='資料時間 '+(M.updated?new Date(M.updated).toLocaleTimeString('zh-TW',{hour12:false,timeZone:'Asia/Taipei'}):'—')+'（每 70 秒檢查）';evaluate(true)}catch(e){$('om-st').textContent='抓資料失敗，20 秒後重試：'+e.message}}
+M.setPlan=function(plan,src){src=src||'mine';const pre=src+':';M.planDay=plan.day||M.planDay;const tg=plan.triggers.map(t=>{const c=t.check;return Object.assign({},t,{src,id:pre+t.id,check:C=>c(Object.assign({},C,{fired:id=>C.fired(pre+id)}))})});M.triggers=M.triggers.filter(t=>(t.src||'mine')!==src).concat(tg);M.levels=M.levels.filter(l=>(l.src||'mine')!==src).concat((plan.levels||[]).map(l=>Object.assign({},l,{src})));Object.keys(M.fired).forEach(k=>{if(k.startsWith(pre))delete M.fired[k]});M.log=M.log.filter(l=>!String(l.id).startsWith(pre));if(src==='author'&&!M.ptSet)M.pt='author';document.title='櫃買盤中監控';renderTriggers();renderLog();draw()};
+M.start=function(){if(M.timer)clearInterval(M.timer);tick();M.timer=setInterval(tick,70000)};
+M.stop=function(){if(M.timer)clearInterval(M.timer);M.timer=null};
+M.replay=async function(day){M.stop();await load();M.fired={};M.log=[];const pd=M.planDay;M.planDay=null;
+  const prevBars=M.b5.filter(x=>dd(x.t)<day);M.prevClose=prevBars.length?prevBars[prevBars.length-1].c:null;
+  const dayBars=M.b5.filter(x=>dd(x.t)===day);dayBars.forEach(bar=>{M.nowOverride=bar.t;evaluate(true)});
+  M.planDay=pd;$('om-st').textContent='回放 '+day+' 完成（顯示的是回放結果）';return M.log.map(l=>l.hm+' '+l.px.toFixed(2)+' '+l.label)};
+(document.getElementById('om-start')||document.createElement('b')).addEventListener('click',async()=>{M.nowOverride=null;try{M.audio=new (window.AudioContext||window.webkitAudioContext)();await M.audio.resume()}catch(e){}
+  try{if(window.Notification&&Notification.permission==='default')await Notification.requestPermission()}catch(e){}
+  $('om-start').textContent='監控中';$('om-banner').style.display='none';M.fired={};M.log=[];M.start();beep()});
+window.addEventListener('resize',draw);
+renderTriggers();M.start();
+})();
+
+</script></body></html>
